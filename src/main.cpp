@@ -3,9 +3,7 @@
 #include <iostream>
 
 #include "image.hpp"
-
-using u32 = uint32_t;
-using f32 = float;
+#include "types.hpp"
 
 template <typename T> struct Point
 {

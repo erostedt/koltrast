@@ -1,9 +1,9 @@
+#pragma once
+
 #include <cmath>
-#include <cstdint>
 #include <vector>
 
-using u8 = uint8_t;
-using u32 = uint32_t;
+#include "types.hpp"
 
 struct RGB
 {

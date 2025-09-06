@@ -7,4 +7,5 @@ set(CMAKE_CXX_FLAGS
     "-Wall -pedantic -Wextra -Werror -Wshadow -Wsign-conversion -Wconversion -Wunreachable-code -g"
 )
 
+include_directories(src)
 add_executable(${PROJECT_NAME} src/main.cpp)

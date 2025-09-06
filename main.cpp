@@ -1,7 +1,10 @@
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 using u32 = uint32_t;
+using u8 = uint8_t;
 using f32 = float;
 
 template <typename T> struct Point
@@ -58,53 +61,148 @@ BoundingBox TriangleBoundingBox(const Triangle &t)
     return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
 }
 
+struct RGB
+{
+    u8 r;
+    u8 g;
+    u8 b;
+};
+
+class Image
+{
+    using iterator = std::vector<RGB>::iterator;
+    using const_iterator = std::vector<RGB>::const_iterator;
+
+  public:
+    Image(u32 width, u32 height) : m_width(width), m_height(height), pixels(width * height)
+    {
+    }
+
+    inline u32 width() const
+    {
+        return m_width;
+    }
+
+    inline u32 height() const
+    {
+        return m_height;
+    }
+
+    inline RGB &operator[](u32 i)
+    {
+        return pixels[i];
+    }
+
+    inline RGB &operator[](u32 x, u32 y)
+    {
+        return operator[](y * m_width + x);
+    }
+
+    inline const RGB &operator[](u32 i) const
+    {
+        return pixels[i];
+    }
+
+    inline const RGB &operator[](u32 x, u32 y) const
+    {
+        return operator[](y * m_width + x);
+    }
+
+    inline iterator begin()
+    {
+        return std::begin(pixels);
+    }
+
+    inline iterator end()
+    {
+        return std::end(pixels);
+    }
+
+    inline const_iterator begin() const
+    {
+        return std::cbegin(pixels);
+    }
+
+    inline const_iterator end() const
+    {
+        return std::cend(pixels);
+    }
+
+  private:
+    u32 m_width;
+    u32 m_height;
+    std::vector<RGB> pixels;
+};
+
+void DrawTriangle(Image &image, const Triangle &t, RGB color)
+{
+    BoundingBox box = TriangleBoundingBox(t);
+
+    PointF32 top_left = {(f32)box.top_left.x, (f32)box.top_left.y};
+
+    f32 inv_area_ABC = 1.0f / SignedTriangleArea(t);
+    f32 area_PBC = SignedTriangleArea(top_left, t.p2, t.p3);
+    f32 area_PAC = SignedTriangleArea(t.p1, top_left, t.p3);
+
+    f32 u = area_PBC * inv_area_ABC;
+    f32 v = area_PAC * inv_area_ABC;
+
+    f32 uxscale = 0.5f * (t.p2.y - t.p3.y) * inv_area_ABC;
+    f32 vxscale = 0.5f * (t.p3.y - t.p1.y) * inv_area_ABC;
+
+    f32 uyscale = 0.5f * (t.p3.x - t.p2.x) * inv_area_ABC;
+    f32 vyscale = 0.5f * (t.p1.x - t.p3.x) * inv_area_ABC;
+
+    f32 u2 = (u - uxscale * (f32)box.top_left.x - uyscale * (f32)box.top_left.y);
+    f32 v2 = (v - vxscale * (f32)box.top_left.x - vyscale * (f32)box.top_left.y);
+
+    for (u32 y = 0; y < 400; ++y)
+    {
+        for (u32 x = 0; x < 400; ++x)
+        {
+            f32 a = u2 + (f32)y * uyscale + uxscale * (f32)x;
+            f32 b = v2 + (f32)y * vyscale + vxscale * (f32)x;
+            f32 c = 1.0f - a - b;
+
+            if ((0 <= a) && (a <= 1.0f) && (0 <= b) && (b <= 1.0f) && (0 <= c) && (c <= 1.0f))
+            {
+                image[x, y] = color;
+            }
+        }
+    }
+}
+
+inline void WritePixel(const RGB &color)
+{
+    std::cout << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
+}
+
+void WriteImage(const Image &image)
+{
+    using std::ranges::for_each;
+    std::cout << "P3\n";
+    std::cout << image.width() << ' ' << image.height() << "\n255\n";
+    for_each(image, WritePixel);
+}
+
 int main()
 {
-    Triangle triangle{
+    Triangle t1{
 
         {200, 100},
         {100, 300},
         {300, 300},
     };
 
-    BoundingBox box = TriangleBoundingBox(triangle);
+    Triangle t2{
 
-    PointF32 top_left = {(f32)box.top_left.x, (f32)box.top_left.y};
+        {300, 100},
+        {100, 300},
+        {300, 300},
+    };
 
-    f32 inv_area_ABC = 1.0f / SignedTriangleArea(triangle);
-    f32 area_PBC = SignedTriangleArea(top_left, triangle.p2, triangle.p3);
-    f32 area_PAC = SignedTriangleArea(triangle.p1, top_left, triangle.p3);
-
-    f32 u = area_PBC * inv_area_ABC;
-    f32 v = area_PAC * inv_area_ABC;
-
-    f32 uxscale = 0.5f * (triangle.p2.y - triangle.p3.y) * inv_area_ABC;
-    f32 vxscale = 0.5f * (triangle.p3.y - triangle.p1.y) * inv_area_ABC;
-
-    f32 uyscale = 0.5f * (triangle.p3.x - triangle.p2.x) * inv_area_ABC;
-    f32 vyscale = 0.5f * (triangle.p1.x - triangle.p3.x) * inv_area_ABC;
-
-    std::cout << "P3\n";
-    std::cout << 400 << ' ' << 400 << "\n255\n";
-    for (u32 y = 0; y < 400; ++y)
-    {
-        f32 dy = (f32)(y - box.top_left.y);
-        for (u32 x = 0; x < 400; ++x)
-        {
-            f32 dx = (f32)(x - box.top_left.x);
-
-            f32 a = u + dy * uyscale + dx * uxscale;
-            f32 b = v + dy * vyscale + dx * vxscale;
-            f32 c = 1.0f - a - b;
-
-            if ((0 <= a) && (a <= 1.0f) && (0 <= b) && (b <= 1.0f) && (0 <= c) && (c <= 1.0f))
-            {
-                std::cout << "255 0 0\n";
-            }
-            else
-            {
-                std::cout << "0 0 0\n";
-            }
-        }
-    }
+    Image image(400, 400);
+    DrawTriangle(image, t1, {255, 0, 0});
+    DrawTriangle(image, t2, {0, 255, 0});
+    WriteImage(image);
 }

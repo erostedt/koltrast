@@ -81,9 +81,9 @@ void DrawTriangle(Image &image, const Triangle &t, RGB color)
     f32 u2 = (u - uxscale * (f32)box.top_left.x - uyscale * (f32)box.top_left.y);
     f32 v2 = (v - vxscale * (f32)box.top_left.x - vyscale * (f32)box.top_left.y);
 
-    for (u32 y = 0; y < 400; ++y)
+    for (u32 y = 0; y < image.height(); ++y)
     {
-        for (u32 x = 0; x < 400; ++x)
+        for (u32 x = 0; x < image.width(); ++x)
         {
             f32 a = u2 + (f32)y * uyscale + uxscale * (f32)x;
             f32 b = v2 + (f32)y * vyscale + vxscale * (f32)x;

@@ -59,37 +59,25 @@ BoundingBox TriangleBoundingBox(const Triangle &t)
     return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
 }
 
+inline f32 Edge(PointF32 p1, PointF32 p2, f32 x, f32 y)
+{
+    return (x - p1.x) * (p2.y - p1.y) - (y - p1.y) * (p2.x - p1.x);
+}
+
 void DrawTriangle(Image &image, const Triangle &t, RGB color)
 {
     BoundingBox box = TriangleBoundingBox(t);
-
-    PointF32 top_left = {(f32)box.top_left.x, (f32)box.top_left.y};
-
-    f32 inv_area_ABC = 1.0f / SignedTriangleArea(t);
-    f32 area_PBC = SignedTriangleArea(top_left, t.p2, t.p3);
-    f32 area_PAC = SignedTriangleArea(t.p1, top_left, t.p3);
-
-    f32 u = area_PBC * inv_area_ABC;
-    f32 v = area_PAC * inv_area_ABC;
-
-    f32 uxscale = 0.5f * (t.p2.y - t.p3.y) * inv_area_ABC;
-    f32 vxscale = 0.5f * (t.p3.y - t.p1.y) * inv_area_ABC;
-
-    f32 uyscale = 0.5f * (t.p3.x - t.p2.x) * inv_area_ABC;
-    f32 vyscale = 0.5f * (t.p1.x - t.p3.x) * inv_area_ABC;
-
-    f32 u2 = (u - uxscale * (f32)box.top_left.x - uyscale * (f32)box.top_left.y);
-    f32 v2 = (v - vxscale * (f32)box.top_left.x - vyscale * (f32)box.top_left.y);
-
     for (u32 y = box.top_left.y; y < box.bottom_right.y; ++y)
     {
         for (u32 x = box.top_left.x; x < box.bottom_right.x; ++x)
         {
-            f32 a = u2 + (f32)y * uyscale + uxscale * (f32)x;
-            f32 b = v2 + (f32)y * vyscale + vxscale * (f32)x;
-            f32 c = 1.0f - a - b;
+            f32 px = (f32)x + 0.5f;
+            f32 py = (f32)y + 0.5f;
+            f32 w0 = Edge(t.p2, t.p3, (f32)px, (f32)py);
+            f32 w1 = Edge(t.p3, t.p1, (f32)px, (f32)py);
+            f32 w2 = Edge(t.p1, t.p2, (f32)px, (f32)py);
 
-            if ((0 <= a) && (a <= 1.0f) && (0 <= b) && (b <= 1.0f) && (0 <= c) && (c <= 1.0f))
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0)
             {
                 image[x, y] = color;
             }

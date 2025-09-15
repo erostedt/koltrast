@@ -28,17 +28,6 @@ struct BoundingBox
     PointU32 bottom_right;
 };
 
-inline f32 SignedTriangleArea(PointF32 p1, PointF32 p2, PointF32 p3)
-{
-    f32 det = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
-    return 0.5f * det;
-}
-
-inline f32 SignedTriangleArea(const Triangle &t)
-{
-    return SignedTriangleArea(t.p1, t.p2, t.p3);
-}
-
 inline u32 FloorToU32(f32 x)
 {
     return static_cast<u32>(std::floor(x));

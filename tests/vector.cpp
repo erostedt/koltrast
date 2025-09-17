@@ -1,4 +1,4 @@
-#include "linalg.hpp"
+#include "vector.hpp"
 
 #include "types.hpp"
 #include "utest.h"
@@ -228,7 +228,7 @@ UTEST(vector, squared_distance)
 {
     const Vector<f32, 3> u = {1.0f, 1.0f, 1.0f};
     const Vector<f32, 3> v = {2.0f, 3.0f, 3.0f};
-    const f32 actual = squared_distance(u, v);
+    const f32 actual = u.squared_distance(v);
     const f32 expected = 9.0f;
     ASSERT_NEAR(actual, expected, 1e-5f);
 }
@@ -237,7 +237,7 @@ UTEST(vector, distance)
 {
     const Vector<f32, 3> u = {1.0f, 1.0f, 1.0f};
     const Vector<f32, 3> v = {2.0f, 3.0f, 3.0f};
-    const f32 actual = distance(u, v);
+    const f32 actual = u.distance(v);
     const f32 expected = 3.0f;
     ASSERT_NEAR(actual, expected, 1e-5f);
 }

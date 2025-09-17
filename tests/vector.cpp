@@ -199,3 +199,45 @@ UTEST(vector, cross)
     const Vector<f32, 3> expected = {-3.0f, 6.0f, -3.0f};
     ASSERT_NEAR((actual - expected).length(), 0.0f, 1e-5f);
 }
+
+UTEST(vector, size)
+{
+    const Vector<f32, 3> u = {1.0f, 2.0f, 3.0f};
+    const auto actual = u.size();
+    const size_t expected = 3;
+    ASSERT_EQ(actual, expected);
+}
+
+UTEST(vector, squared_length)
+{
+    const Vector<f32, 3> u = {1.0f, 2.0f, 3.0f};
+    const auto actual = u.squared_length();
+    const f32 expected = 14.0f;
+    ASSERT_NEAR(actual, expected, 1e-5f);
+}
+
+UTEST(vector, length)
+{
+    const Vector<f32, 3> u = {1.0f, 2.0f, 2.0f};
+    const auto actual = u.length();
+    const f32 expected = 3.0f;
+    ASSERT_NEAR(actual, expected, 1e-5f);
+}
+
+UTEST(vector, squared_distance)
+{
+    const Vector<f32, 3> u = {1.0f, 1.0f, 1.0f};
+    const Vector<f32, 3> v = {2.0f, 3.0f, 3.0f};
+    const f32 actual = squared_distance(u, v);
+    const f32 expected = 9.0f;
+    ASSERT_NEAR(actual, expected, 1e-5f);
+}
+
+UTEST(vector, distance)
+{
+    const Vector<f32, 3> u = {1.0f, 1.0f, 1.0f};
+    const Vector<f32, 3> v = {2.0f, 3.0f, 3.0f};
+    const f32 actual = distance(u, v);
+    const f32 expected = 3.0f;
+    ASSERT_NEAR(actual, expected, 1e-5f);
+}

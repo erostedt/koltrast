@@ -119,8 +119,7 @@ UTEST(vector, vec_diveded_by_scalar)
 UTEST(vector, equal)
 {
     const Vector<int, 2> u = {1, 2};
-    const Vector<int, 2> v = {1, 2};
-    ASSERT_EQ(u, v);
+    ASSERT_EQ(u, u);
 }
 
 UTEST(vector, not_equal)

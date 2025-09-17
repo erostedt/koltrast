@@ -35,6 +35,16 @@ concept Divisable = requires(T a, U b) {
     { a / b };
 };
 
+template <typename T, size_t N, typename UnaryOperation>
+constexpr auto Elementwise(const std::array<T, N> &arr, UnaryOperation op)
+{
+    using namespace std;
+    using value_type = decltype(op(std::declval<T>()));
+    std::array<value_type, N> out;
+    transform(begin(arr), end(arr), begin(out), op);
+    return out;
+}
+
 template <typename T, typename U, size_t N, typename BinaryOperation>
 constexpr auto Elementwise(const std::array<T, N> &left, const std::array<U, N> &right, BinaryOperation op)
 {

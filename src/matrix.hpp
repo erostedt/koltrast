@@ -25,6 +25,8 @@ class Matrix
     using const_reverse_iterator = typename std::array<T, Rows * Cols>::const_reverse_iterator;
 
   public:
+    constexpr Matrix() = default;
+
     template <typename... U> constexpr Matrix(U... elems) : elements{elems...}
     {
         static_assert(sizeof...(U) == (Rows * Cols), "Wrong number of elements");
@@ -67,9 +69,45 @@ class Matrix
         return !(*this == v);
     }
 
-    [[nodiscard]] constexpr inline size_t size() const noexcept
+    [[nodiscard]] static constexpr inline size_t rows() noexcept
+
+    {
+        return Rows;
+    }
+
+    [[nodiscard]] static constexpr inline size_t cols() noexcept
+    {
+        return Cols;
+    }
+
+    [[nodiscard]] static constexpr inline size_t size() noexcept
     {
         return Rows * Cols;
+    }
+
+    [[nodiscard]] constexpr inline size_t index(size_t row, size_t col) const noexcept
+    {
+        return row * Cols + col;
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t row, size_t col) const noexcept
+    {
+        return elements[index(row, col)];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t row, size_t col) noexcept
+    {
+        return elements[index(row, col)];
     }
 
     std::array<T, Rows * Cols> elements{};

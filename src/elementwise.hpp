@@ -11,6 +11,11 @@ concept Addable = requires(T a, U b) {
 };
 
 template <typename T, typename U>
+concept SelfAddable = requires(T a, U b) {
+    { a += b };
+};
+
+template <typename T, typename U>
 concept Subtractable = requires(T a, U b) {
     { a - b };
 };

@@ -25,6 +25,10 @@ class Vector
     using const_reverse_iterator = typename std::array<T, Rows>::const_reverse_iterator;
 
   public:
+    constexpr Vector() : elements{}
+    {
+    }
+
     template <typename... U> constexpr Vector(U... elems) : elements{elems...}
     {
         static_assert(sizeof...(U) == Rows, "Wrong number of elements");
@@ -67,7 +71,7 @@ class Vector
         return !(*this == v);
     }
 
-    [[nodiscard]] constexpr inline size_t size() const noexcept
+    [[nodiscard]] static constexpr inline size_t size() noexcept
     {
         return Rows;
     }
@@ -112,6 +116,16 @@ class Vector
         requires(Rows == 4)
     {
         return elements[3];
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
+    {
+        return elements[index];
     }
 
     [[nodiscard]] constexpr inline Vector cross(const Vector &v) const noexcept

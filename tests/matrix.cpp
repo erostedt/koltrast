@@ -278,7 +278,6 @@ UTEST(matrix, mat_mul_vec)
         {1, 2, 3},
         {4, 5, 6},
     };
-    Matrix<int, 2, 3>::identity();
     Vector<int, 3> r = {7, 8, 9};
     const auto actual = l * r;
     const Vector<int, 2> expected = {50, 122};

@@ -284,7 +284,7 @@ class Matrix : public Array<T, Rows * Cols>
         }
     }
 
-    constexpr static Matrix identity() noexcept
+    [[nodiscard]] constexpr static Matrix identity() noexcept
     {
         Matrix eye;
         for (size_t i = 0; i < Rows; ++i)

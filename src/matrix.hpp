@@ -1,7 +1,5 @@
 #pragma once
 
-#include "elementwise.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -10,12 +8,192 @@
 #include <expected>
 #include <functional>
 #include <initializer_list>
+#include <iterator>
+#include <numeric>
 #include <string>
+
+template <typename T>
+concept Addable = requires(T x) {
+    { x + x } -> std::same_as<T>;
+};
+
+template <typename T>
+concept SelfAddable = requires(T x) {
+    { x += x };
+};
+
+template <typename T>
+concept Subtractable = requires(T x) {
+    { x - x } -> std::same_as<T>;
+};
+
+template <typename T>
+concept Negatable = requires(T x) {
+    { -x } -> std::same_as<T>;
+};
+
+template <typename T>
+concept Multiplicable = requires(T x) {
+    { x * x } -> std::same_as<T>;
+};
+
+template <typename T>
+concept Divisable = requires(T a) {
+    { a / a } -> std::same_as<T>;
+};
+
+template <typename T>
+concept FixedSize = requires {
+    { std::remove_cvref_t<T>::size() } -> std::convertible_to<std::size_t>;
+};
+
+template <typename T>
+concept ElementwiseOperable = std::ranges::input_range<T> && FixedSize<T>;
+
+template <typename T>
+concept ElementwiseAddable = ElementwiseOperable<T> && Addable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseSubtractable = ElementwiseOperable<T> && Subtractable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseMultiplicable = ElementwiseOperable<T> && Multiplicable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseDivisable = ElementwiseOperable<T> && Divisable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseNegatable = ElementwiseOperable<T> && Negatable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseEquatable = ElementwiseOperable<T> && std::equality_comparable<typename T::value_type>;
+
+template <ElementwiseOperable Container, typename UnaryOperation>
+constexpr Container Elementwise(const Container &left, UnaryOperation op)
+{
+    using namespace std;
+    Container out;
+    transform(begin(left), end(left), begin(out), op);
+    return out;
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+constexpr Container Elementwise(const Container &left, const Container &right, BinaryOperation op)
+{
+    using namespace std;
+    Container out;
+    transform(begin(left), end(left), begin(right), begin(out), op);
+    return out;
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+constexpr Container Elementwise(const Container &left, const typename Container::value_type &right, BinaryOperation op)
+{
+    using namespace std;
+    using T = typename Container::value_type;
+    Container out;
+    transform(begin(left), end(left), begin(out), [&right, &op](const T &element) { return op(element, right); });
+    return out;
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+constexpr Container Elementwise(const typename Container::value_type &left, const Container &right, BinaryOperation op)
+{
+    using namespace std;
+    using T = typename Container::value_type;
+    Container out;
+    transform(begin(right), end(right), begin(out), [&left, &op](const T &element) { return op(left, element); });
+    return out;
+}
+
+template <ElementwiseAddable Container>
+[[nodiscard]] constexpr inline Container operator+(const Container &left, const Container &right) noexcept
+{
+    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+}
+
+template <ElementwiseAddable Container>
+[[nodiscard]] constexpr inline Container operator+(const Container &left,
+                                                   const typename Container::value_type &right) noexcept
+{
+    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+}
+
+template <ElementwiseAddable Container>
+[[nodiscard]] constexpr inline Container operator+(const typename Container::value_type &left,
+                                                   const Container &right) noexcept
+{
+    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+}
+
+template <ElementwiseSubtractable Container>
+[[nodiscard]] constexpr inline Container operator-(const Container &left, const Container &right) noexcept
+{
+    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+}
+
+template <ElementwiseSubtractable Container>
+[[nodiscard]] constexpr inline Container operator-(const Container &left,
+                                                   const typename Container::value_type &right) noexcept
+{
+    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+}
+
+template <ElementwiseSubtractable Container>
+[[nodiscard]] constexpr inline Container operator-(const typename Container::value_type &left,
+                                                   const Container &right) noexcept
+{
+    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+}
+
+template <ElementwiseNegatable Container>
+[[nodiscard]] constexpr inline Container operator-(const Container &v) noexcept
+{
+    using namespace std;
+    auto out = v;
+    transform(begin(v), end(v), begin(out), std::negate<typename Container::value_type>{});
+    return out;
+}
+
+template <ElementwiseMultiplicable Container>
+[[nodiscard]] constexpr inline Container operator*(const Container &left,
+                                                   const typename Container::value_type &right) noexcept
+{
+    return Elementwise(left, right, std::multiplies<typename Container::value_type>{});
+}
+
+template <ElementwiseMultiplicable Container>
+[[nodiscard]] constexpr inline Container operator*(const typename Container::value_type &left,
+                                                   const Container &right) noexcept
+{
+    return Elementwise(left, right, std::multiplies<typename Container::value_type>{});
+}
+
+template <ElementwiseDivisable Container>
+[[nodiscard]] constexpr inline Container operator/(const Container &numerator,
+                                                   const typename Container::value_type &denominator) noexcept
+{
+    return Elementwise(numerator, denominator, std::divides<typename Container::value_type>{});
+}
+
+template <ElementwiseEquatable Container>
+[[nodiscard]] constexpr inline bool operator==(const Container &left, const Container &right) noexcept
+{
+    using namespace std;
+    return equal(begin(left), end(left), begin(right));
+}
+
+template <ElementwiseEquatable Container>
+[[nodiscard]] constexpr inline bool operator!=(const Container &left, const Container &right) noexcept
+{
+    return !(left == right);
+}
 
 template <typename T, size_t Rows, size_t Cols>
     requires std::is_signed_v<T>
 class Matrix
 {
+  public:
     using value_type = typename std::array<T, Rows * Cols>::value_type;
     using pointer = typename std::array<T, Rows * Cols>::pointer;
     using const_pointer = typename std::array<T, Rows * Cols>::const_pointer;
@@ -27,9 +205,7 @@ class Matrix
     using difference_type = typename std::array<T, Rows * Cols>::difference_type;
     using reverse_iterator = typename std::array<T, Rows * Cols>::reverse_iterator;
     using const_reverse_iterator = typename std::array<T, Rows * Cols>::const_reverse_iterator;
-    using Mat = Matrix<T, Rows, Cols>;
 
-  public:
     constexpr Matrix() = default;
 
     template <typename... U> constexpr Matrix(U... elems) : elements{elems...}
@@ -57,9 +233,9 @@ class Matrix
         }
     }
 
-    constexpr static Mat identity() noexcept
+    constexpr static Matrix identity() noexcept
     {
-        Mat eye;
+        Matrix eye;
         for (size_t i = 0; i < Rows; ++i)
         {
             eye[i, i] = T{1};
@@ -87,18 +263,6 @@ class Matrix
         return std::end(elements);
     }
 
-    [[nodiscard]] constexpr inline bool operator==(const Matrix &v) const noexcept
-        requires std::equality_comparable<T>
-    {
-        return elements == v.elements;
-    }
-
-    [[nodiscard]] constexpr inline bool operator!=(const Matrix &v) const noexcept
-        requires std::equality_comparable<T>
-    {
-        return !(*this == v);
-    }
-
     [[nodiscard]] static constexpr inline size_t rows() noexcept
 
     {
@@ -110,7 +274,7 @@ class Matrix
         return Cols;
     }
 
-    [[nodiscard]] static constexpr inline size_t size() noexcept
+    [[nodiscard]] static consteval inline size_t size() noexcept
     {
         return Rows * Cols;
     }
@@ -140,11 +304,11 @@ class Matrix
         return elements[index(row, col)];
     }
 
-    [[nodiscard]] constexpr std::expected<Mat, std::string> inverse() const noexcept
+    [[nodiscard]] constexpr std::expected<Matrix, std::string> inverse() const noexcept
         requires std::floating_point<T> && (Rows == Cols)
     {
-        Mat A = *this;
-        Mat inv = Mat::identity();
+        Matrix A = *this;
+        Matrix inv = Matrix::identity();
 
         // Gauss–Jordan elimination
         for (size_t col = 0; col < Cols; ++col)
@@ -201,13 +365,13 @@ class Matrix
             }
         }
 
-        return std::expected<Mat, std::string>(inv);
+        return std::expected<Matrix, std::string>(inv);
     }
 
     template <typename UnaryOperation> [[nodiscard]] constexpr inline auto elementwise(UnaryOperation op) const noexcept
     {
         using out_type = decltype(op(std::declval<T>()));
-        return Matrix<out_type, Rows, Cols>(Elementwise(elements, op));
+        return Matrix<out_type, Rows, Cols>(Elementwise(*this, op));
     }
 
     template <typename U, typename BinaryOperation>
@@ -215,88 +379,182 @@ class Matrix
                                                     BinaryOperation op) const noexcept
     {
         using out_type = decltype(op(std::declval<T>(), std::declval<U>()));
-        return Matrix<out_type, Rows, Cols>(Elementwise(elements, other, op));
+        return Matrix<out_type, Rows, Cols>(Elementwise(*this, other, op));
     }
 
     std::array<T, Rows * Cols> elements{};
 };
 
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator+(const Matrix<T, Rows, Cols> &left,
-                                                               const Matrix<T, Rows, Cols> &right) noexcept
-    requires Addable<T, T>
+template <typename T, size_t Rows>
+    requires std::is_signed_v<T>
+class Vector
 {
-    return Elementwise(left.elements, right.elements, std::plus<T>{});
+  public:
+    using value_type = typename std::array<T, Rows>::value_type;
+    using pointer = typename std::array<T, Rows>::pointer;
+    using const_pointer = typename std::array<T, Rows>::const_pointer;
+    using reference = typename std::array<T, Rows>::reference;
+    using const_reference = typename std::array<T, Rows>::const_reference;
+    using iterator = typename std::array<T, Rows>::iterator;
+    using const_iterator = typename std::array<T, Rows>::const_iterator;
+    using size_type = typename std::array<T, Rows>::size_type;
+    using difference_type = typename std::array<T, Rows>::difference_type;
+    using reverse_iterator = typename std::array<T, Rows>::reverse_iterator;
+    using const_reverse_iterator = typename std::array<T, Rows>::const_reverse_iterator;
+
+    constexpr Vector() : elements{}
+    {
+    }
+
+    template <typename... U> constexpr Vector(U... elems) : elements{elems...}
+    {
+        static_assert(sizeof...(U) == Rows, "Wrong number of elements");
+        static_assert((std::is_same_v<U, T> && ...), "All arguments must be exactly T");
+    }
+
+    constexpr Vector(const std::array<T, Rows> &arr) : elements(arr)
+    {
+    }
+
+    [[nodiscard]] constexpr inline iterator begin() noexcept
+    {
+        return std::begin(elements);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
+    {
+        return std::begin(elements);
+    }
+
+    [[nodiscard]] constexpr inline iterator end() noexcept
+    {
+        return std::end(elements);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator end() const noexcept
+    {
+        return std::end(elements);
+    }
+
+    [[nodiscard]] static constexpr inline size_t size() noexcept
+    {
+        return Rows;
+    }
+
+    [[nodiscard]] constexpr inline T dot(const Vector &v) const noexcept
+        requires Multiplicable<T> && Addable<T>
+    {
+        return std::inner_product(this->begin(), this->end(), std::begin(v), T{});
+    }
+
+    [[nodiscard]] constexpr inline T squared_length() const noexcept
+        requires std::floating_point<T>
+    {
+        return dot(*this);
+    }
+
+    [[nodiscard]] constexpr inline T length() const noexcept
+        requires std::floating_point<T>
+    {
+        return std::sqrt(squared_length());
+    }
+
+    [[nodiscard]] constexpr inline T x() const noexcept
+        requires(Rows >= 1 && Rows <= 4)
+    {
+        return elements[0];
+    }
+
+    [[nodiscard]] constexpr inline T y() const noexcept
+        requires(Rows >= 2 && Rows <= 4)
+    {
+        return elements[1];
+    }
+
+    [[nodiscard]] constexpr inline T z() const noexcept
+        requires(Rows >= 3 && Rows <= 4)
+    {
+        return elements[2];
+    }
+
+    [[nodiscard]] constexpr inline T w() const noexcept
+        requires(Rows == 4)
+    {
+        return elements[3];
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline Vector cross(const Vector &v) const noexcept
+        requires(Rows == 3) && Multiplicable<T> && Subtractable<T>
+    {
+        const auto &u = *this;
+        const auto x = u.y() * v.z() - u.z() * v.y();
+        const auto y = u.z() * v.x() - u.x() * v.z();
+        const auto z = u.x() * v.y() - u.y() * v.x();
+        return {x, y, z};
+    }
+
+    [[nodiscard]] constexpr inline T squared_distance(const Vector &to) const noexcept
+        requires std::floating_point<T>
+    {
+        return (*this - to).squared_length();
+    }
+
+    [[nodiscard]] constexpr inline T distance(const Vector &to) const noexcept
+        requires std::floating_point<T>
+    {
+        return std::sqrt(squared_distance(to));
+    }
+
+    std::array<T, Rows> elements{};
+};
+
+template <typename T, size_t Rows1, size_t Cols1, size_t Cols2>
+[[nodiscard]] constexpr inline Matrix<T, Rows1, Cols2> operator*(const Matrix<T, Rows1, Cols1> &left,
+                                                                 const Matrix<T, Cols1, Cols2> &right) noexcept
+    requires Addable<T> && SelfAddable<T> && Multiplicable<T>
+{
+    Matrix<T, Rows1, Cols2> result;
+    for (size_t row = 0; row < Rows1; ++row)
+    {
+        for (size_t col = 0; col < Cols2; ++col)
+        {
+            T accum{};
+            for (size_t k = 0; k < Cols1; ++k)
+            {
+                accum += left[row, k] * right[k, col];
+            }
+            result[row, col] = accum;
+        }
+    }
+
+    return result;
 }
 
 template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator+(const Matrix<T, Rows, Cols> &left,
-                                                               const T &right) noexcept
-    requires Addable<T, T>
+[[nodiscard]] constexpr inline Vector<T, Rows> operator*(const Matrix<T, Rows, Cols> &left,
+                                                         const Vector<T, Cols> &right) noexcept
+    requires Addable<T> && SelfAddable<T> && Multiplicable<T>
 {
-    return Elementwise(left.elements, right, std::plus<T>{});
-}
+    Vector<T, Rows> result;
+    for (size_t row = 0; row < Rows; ++row)
+    {
+        T accum{};
+        for (size_t col = 0; col < Cols; ++col)
+        {
+            accum += left[row, col] * right[col];
+        }
+        result[row] = accum;
+    }
 
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator+(const T &left,
-                                                               const Matrix<T, Rows, Cols> &right) noexcept
-    requires Addable<T, T>
-{
-    return Elementwise(left, right.elements, std::plus<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator-(const Matrix<T, Rows, Cols> &left,
-                                                               const Matrix<T, Rows, Cols> &right) noexcept
-    requires Subtractable<T, T>
-{
-    return Elementwise(left.elements, right.elements, std::minus<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator-(const Matrix<T, Rows, Cols> &left,
-                                                               const T &right) noexcept
-    requires Subtractable<T, T>
-{
-    return Elementwise(left.elements, right, std::minus<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator-(const T &left,
-                                                               const Matrix<T, Rows, Cols> &right) noexcept
-    requires Subtractable<T, T>
-{
-    return Elementwise(left, right.elements, std::minus<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator-(const Matrix<T, Rows, Cols> &v) noexcept
-    requires Negatable<T>
-{
-    using namespace std;
-    auto out = v;
-    transform(begin(v), end(v), begin(out), std::negate<T>{});
-    return out;
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator*(const Matrix<T, Rows, Cols> &left, T right) noexcept
-    requires Multiplicable<T, T>
-{
-    return Elementwise(left.elements, right, std::multiplies<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator*(T left, const Matrix<T, Rows, Cols> &right) noexcept
-    requires Multiplicable<T, T>
-{
-    return Elementwise(left, right.elements, std::multiplies<T>{});
-}
-
-template <typename T, size_t Rows, size_t Cols>
-[[nodiscard]] constexpr inline Matrix<T, Rows, Cols> operator/(const Matrix<T, Rows, Cols> &numerator,
-                                                               T denominator) noexcept
-    requires Divisable<T, T>
-{
-    return Elementwise(numerator.elements, denominator, std::divides<T>{});
+    return result;
 }

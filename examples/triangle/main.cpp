@@ -66,7 +66,7 @@ void WriteImage(const Image &image)
 
 inline f32 Edge(PointF32 p1, PointF32 p2, PointF32 p3)
 {
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+    return (p2.y - p1.y) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.y - p1.y);
 }
 
 inline f32 Edge(const Triangle &t)
@@ -76,7 +76,7 @@ inline f32 Edge(const Triangle &t)
 
 void DrawTriangle(Image &image, const Triangle &t, RGB color)
 {
-    assert(Edge(t) <= 0.0f && "Triangle must be Screen space CCW");
+    assert(Edge(t) >= 0.0f && "Triangle must be Screen space CCW");
     BoundingBox box = TriangleBoundingBox(t);
 
     f32 left = (f32)box.top_left.x + 0.5f;
@@ -86,14 +86,14 @@ void DrawTriangle(Image &image, const Triangle &t, RGB color)
     f32 w1 = Edge(t.p3, t.p1, {left, top});
     f32 w2 = Edge(t.p1, t.p2, {left, top});
 
-    f32 w0_dx = t.p2.y - t.p3.y;
-    f32 w0_dy = t.p3.x - t.p2.x;
+    f32 w0_dx = t.p3.y - t.p2.y;
+    f32 w0_dy = t.p2.x - t.p3.x;
 
-    f32 w1_dx = t.p3.y - t.p1.y;
-    f32 w1_dy = t.p1.x - t.p3.x;
+    f32 w1_dx = t.p1.y - t.p3.y;
+    f32 w1_dy = t.p3.x - t.p1.x;
 
-    f32 w2_dx = t.p1.y - t.p2.y;
-    f32 w2_dy = t.p2.x - t.p1.x;
+    f32 w2_dx = t.p2.y - t.p1.y;
+    f32 w2_dy = t.p1.x - t.p2.x;
 
     for (u32 y = box.top_left.y; y < box.bottom_right.y; ++y)
     {
@@ -103,7 +103,7 @@ void DrawTriangle(Image &image, const Triangle &t, RGB color)
 
         for (u32 x = box.top_left.x; x < box.bottom_right.x; ++x)
         {
-            if (w0i <= 0 && w1i <= 0 && w2i <= 0)
+            if (w0i >= 0 && w1i >= 0 && w2i >= 0)
             {
                 image[x, y] = color;
             }

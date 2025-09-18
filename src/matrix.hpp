@@ -413,6 +413,17 @@ class Vector : public Array<T, Rows>
         return std::sqrt(squared_length());
     }
 
+    [[nodiscard]] constexpr inline std::expected<Vector, std::string> normalized() const noexcept
+        requires std::floating_point<T>
+    {
+        const auto sq_len = squared_length();
+        if (sq_len < T{1e-6f})
+        {
+            return std::unexpected("Cannot normalize (near) 0 vector");
+        }
+        return std::expected<Vector, std::string>((*this) / std::sqrt(sq_len));
+    }
+
     [[nodiscard]] constexpr inline T x() const noexcept
         requires(Rows >= 1 && Rows <= 4)
     {

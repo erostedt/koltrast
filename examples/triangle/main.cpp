@@ -6,6 +6,7 @@
 #include "camera.hpp"
 #include "image.hpp"
 #include "matrix.hpp"
+#include "transform.hpp"
 #include "types.hpp"
 
 template <typename T> struct Point
@@ -51,6 +52,17 @@ BoundingBox TriangleBoundingBox(const Triangle &t)
     return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
 }
 
+BoundingBox ClampedTriangleBoundingBox(const Triangle &t, const BoundingBox &bounds)
+{
+    using namespace std;
+    f32 left = min(min(min(t.p1.x, t.p2.x), t.p3.x), (f32)bounds.top_left.x);
+    f32 top = min(min(min(t.p1.y, t.p2.y), t.p3.y), (f32)bounds.top_left.y);
+
+    f32 right = max(max(max(t.p1.x, t.p2.x), t.p3.x), (f32)bounds.bottom_right.x);
+    f32 bottom = max(max(max(t.p1.y, t.p2.y), t.p3.y), (f32)bounds.bottom_right.y);
+    return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
+}
+
 inline void WritePixel(const RGB &color)
 {
     std::cout << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
@@ -77,7 +89,7 @@ inline f32 Edge(const Triangle &t)
 void DrawTriangle(Image &image, const Triangle &t, RGB color)
 {
     assert(Edge(t) >= 0.0f && "Triangle must be Screen space CCW");
-    BoundingBox box = TriangleBoundingBox(t);
+    BoundingBox box = ClampedTriangleBoundingBox(t, {{0, 0}, {image.width(), image.height()}});
 
     f32 left = (f32)box.top_left.x + 0.5f;
     f32 top = (f32)box.top_left.y + 0.5f;
@@ -124,7 +136,7 @@ int main()
     const Vector<f32, 3> c{0.0f, 1.0f, -2.0f};
 
     Camera<f32> camera = {{1280, 720}, 90, 1.0f, 10.0f};
-    const auto view = Matrix<f32, 4, 4>::identity();
+    const auto view = look_at(Vector<f32, 3>{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
     const auto a1 = project_to_screen(a, view, proj, camera.resolution);

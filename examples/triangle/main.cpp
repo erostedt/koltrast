@@ -3,7 +3,9 @@
 #include <cmath>
 #include <iostream>
 
+#include "camera.hpp"
 #include "image.hpp"
+#include "matrix.hpp"
 #include "types.hpp"
 
 template <typename T> struct Point
@@ -44,8 +46,8 @@ BoundingBox TriangleBoundingBox(const Triangle &t)
     f32 left = min(min(t.p1.x, t.p2.x), t.p3.x);
     f32 top = min(min(t.p1.y, t.p2.y), t.p3.y);
 
-    f32 right = max(max(t.p1.y, t.p2.y), t.p3.y);
-    f32 bottom = max(max(t.p1.x, t.p2.x), t.p3.x);
+    f32 right = max(max(t.p1.x, t.p2.x), t.p3.x);
+    f32 bottom = max(max(t.p1.y, t.p2.y), t.p3.y);
     return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
 }
 
@@ -64,7 +66,7 @@ void WriteImage(const Image &image)
 
 inline f32 Edge(PointF32 p1, PointF32 p2, PointF32 p3)
 {
-    return (p3.y - p1.y) * (p2.x - p1.x) - (p3.x - p1.x) * (p2.y - p1.y);
+    return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
 }
 
 inline f32 Edge(const Triangle &t)
@@ -74,7 +76,7 @@ inline f32 Edge(const Triangle &t)
 
 void DrawTriangle(Image &image, const Triangle &t, RGB color)
 {
-    assert(Edge(t) >= 0.0f && "Triangle must be Screen space CCW");
+    assert(Edge(t) <= 0.0f && "Triangle must be Screen space CCW");
     BoundingBox box = TriangleBoundingBox(t);
 
     f32 left = (f32)box.top_left.x + 0.5f;
@@ -101,7 +103,7 @@ void DrawTriangle(Image &image, const Triangle &t, RGB color)
 
         for (u32 x = box.top_left.x; x < box.bottom_right.x; ++x)
         {
-            if (w0i >= 0 && w1i >= 0 && w2i >= 0)
+            if (w0i <= 0 && w1i <= 0 && w2i <= 0)
             {
                 image[x, y] = color;
             }
@@ -117,13 +119,25 @@ void DrawTriangle(Image &image, const Triangle &t, RGB color)
 
 int main()
 {
+    const Vector<f32, 3> a{-1.0f, -1.0f, -2.0f};
+    const Vector<f32, 3> b{1.0f, -1.0f, -2.0f};
+    const Vector<f32, 3> c{0.0f, 1.0f, -2.0f};
+
+    Camera<f32> camera = {{1280, 720}, 90, 1.0f, 10.0f};
+    const auto view = Matrix<f32, 4, 4>::identity();
+    const auto proj = projection_matrix(camera);
+
+    const auto a1 = project_to_screen(a, view, proj, camera.resolution);
+    const auto b1 = project_to_screen(b, view, proj, camera.resolution);
+    const auto c1 = project_to_screen(c, view, proj, camera.resolution);
+
     Triangle t1{
-        {200, 100},
-        {300, 300},
-        {100, 300},
+        {a1.x(), a1.y()},
+        {b1.x(), b1.y()},
+        {c1.x(), c1.y()},
     };
 
-    Image image(400, 400);
+    Image image((u32)camera.resolution.width, (u32)camera.resolution.height);
     DrawTriangle(image, t1, {255, 0, 0});
     WriteImage(image);
 }

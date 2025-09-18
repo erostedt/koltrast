@@ -312,7 +312,7 @@ UTEST(matrix, mat_inverse1)
     const auto inv = mat.inverse();
     ASSERT_TRUE(inv.has_value());
     const auto expected_eye = mat * inv.value();
-    const auto res = (expected_eye - Mat::identity()).elementwise([](auto a) { return std::abs(a); });
+    const auto res = Elementwise(expected_eye - Mat::identity(), [](auto a) { return std::abs(a); });
     const auto sad = reduce(begin(res), end(res), 0.0);
 
     ASSERT_NEAR(0.0, sad, 1e-5);
@@ -332,7 +332,7 @@ UTEST(matrix, mat_inverse2)
     const auto inv = mat.inverse();
     ASSERT_TRUE(inv.has_value());
     const auto expected_eye = mat * inv.value();
-    const auto res = (expected_eye - Mat::identity()).elementwise([](auto a) { return std::abs(a); });
+    const auto res = Elementwise(expected_eye - Mat::identity(), [](auto a) { return std::abs(a); });
     const auto sad = reduce(begin(res), end(res), 0.0);
 
     ASSERT_NEAR(0.0, sad, 1e-5);

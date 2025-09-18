@@ -382,20 +382,6 @@ class Matrix : public Array<T, Rows * Cols>
 
         return std::expected<Matrix, std::string>(inv);
     }
-
-    template <typename UnaryOperation> [[nodiscard]] constexpr inline auto elementwise(UnaryOperation op) const noexcept
-    {
-        using out_type = decltype(op(std::declval<T>()));
-        return Matrix<out_type, Rows, Cols>(Elementwise(*this, op));
-    }
-
-    template <typename U, typename BinaryOperation>
-    [[nodiscard]] constexpr inline auto elementwise(const Matrix<U, Rows, Cols> &other,
-                                                    BinaryOperation op) const noexcept
-    {
-        using out_type = decltype(op(std::declval<T>(), std::declval<U>()));
-        return Matrix<out_type, Rows, Cols>(Elementwise(*this, other, op));
-    }
 };
 
 template <typename T, size_t Rows>

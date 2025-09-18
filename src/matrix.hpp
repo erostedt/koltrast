@@ -189,36 +189,87 @@ template <ElementwiseEquatable Container>
     return !(left == right);
 }
 
-template <typename T, size_t Rows, size_t Cols>
-    requires std::is_signed_v<T>
-class Matrix
+template <typename T, size_t N>
+    requires(N > 0)
+class Array
 {
   public:
-    using value_type = typename std::array<T, Rows * Cols>::value_type;
-    using pointer = typename std::array<T, Rows * Cols>::pointer;
-    using const_pointer = typename std::array<T, Rows * Cols>::const_pointer;
-    using reference = typename std::array<T, Rows * Cols>::reference;
-    using const_reference = typename std::array<T, Rows * Cols>::const_reference;
-    using iterator = typename std::array<T, Rows * Cols>::iterator;
-    using const_iterator = typename std::array<T, Rows * Cols>::const_iterator;
-    using size_type = typename std::array<T, Rows * Cols>::size_type;
-    using difference_type = typename std::array<T, Rows * Cols>::difference_type;
-    using reverse_iterator = typename std::array<T, Rows * Cols>::reverse_iterator;
-    using const_reverse_iterator = typename std::array<T, Rows * Cols>::const_reverse_iterator;
+    using value_type = typename std::array<T, N>::value_type;
+    using pointer = typename std::array<T, N>::pointer;
+    using const_pointer = typename std::array<T, N>::const_pointer;
+    using reference = typename std::array<T, N>::reference;
+    using const_reference = typename std::array<T, N>::const_reference;
+    using iterator = typename std::array<T, N>::iterator;
+    using const_iterator = typename std::array<T, N>::const_iterator;
+    using size_type = typename std::array<T, N>::size_type;
+    using difference_type = typename std::array<T, N>::difference_type;
+    using reverse_iterator = typename std::array<T, N>::reverse_iterator;
+    using const_reverse_iterator = typename std::array<T, N>::const_reverse_iterator;
 
-    constexpr Matrix() = default;
-
-    template <typename... U> constexpr Matrix(U... elems) : elements{elems...}
+    constexpr Array() = default;
+    template <typename... U> constexpr Array(U... elems) : elements{elems...}
     {
-        static_assert(sizeof...(U) == (Rows * Cols), "Wrong number of elements");
+        static_assert(sizeof...(U) == N, "Wrong number of elements");
         static_assert((std::is_convertible_v<U, T> && ...), "All arguments must be exactly T");
     }
-
-    constexpr Matrix(const std::array<T, Rows * Cols> &arr) : elements(arr)
+    constexpr Array(const std::array<T, N> &arr) : elements{arr}
     {
     }
 
-    Matrix(std::initializer_list<std::initializer_list<T>> mat) : elements{}
+    [[nodiscard]] constexpr inline iterator begin() noexcept
+    {
+        return std::begin(elements);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
+    {
+        return std::begin(elements);
+    }
+
+    [[nodiscard]] constexpr inline iterator end() noexcept
+    {
+        return std::end(elements);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator end() const noexcept
+    {
+        return std::end(elements);
+    }
+
+    [[nodiscard]] static consteval inline size_t size() noexcept
+    {
+        return N;
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
+    {
+        return elements[index];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
+    {
+        return elements[index];
+    }
+
+  protected:
+    std::array<T, N> elements{};
+};
+
+template <typename Matrix>
+concept Square = requires(Matrix m) {
+    { m.rows() == m.cols() };
+};
+
+template <typename T, size_t Rows, size_t Cols>
+    requires std::is_signed_v<T>
+class Matrix : public Array<T, Rows * Cols>
+{
+  public:
+    using Array<T, Rows * Cols>::Array;
+    using Array<T, Rows * Cols>::elements;
+    using Array<T, Rows * Cols>::operator[];
+
+    Matrix(std::initializer_list<std::initializer_list<T>> mat)
     {
         assert(std::size(mat) == Rows);
         size_t index = 0;
@@ -243,28 +294,7 @@ class Matrix
         return eye;
     }
 
-    [[nodiscard]] constexpr inline iterator begin() noexcept
-    {
-        return std::begin(elements);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
-    {
-        return std::begin(elements);
-    }
-
-    [[nodiscard]] constexpr inline iterator end() noexcept
-    {
-        return std::end(elements);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator end() const noexcept
-    {
-        return std::end(elements);
-    }
-
     [[nodiscard]] static constexpr inline size_t rows() noexcept
-
     {
         return Rows;
     }
@@ -274,24 +304,9 @@ class Matrix
         return Cols;
     }
 
-    [[nodiscard]] static consteval inline size_t size() noexcept
-    {
-        return Rows * Cols;
-    }
-
     [[nodiscard]] constexpr inline size_t index(size_t row, size_t col) const noexcept
     {
         return row * Cols + col;
-    }
-
-    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
-    {
-        return elements[index];
-    }
-
-    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
-    {
-        return elements[index];
     }
 
     [[nodiscard]] constexpr inline const T &operator[](size_t row, size_t col) const noexcept
@@ -381,66 +396,16 @@ class Matrix
         using out_type = decltype(op(std::declval<T>(), std::declval<U>()));
         return Matrix<out_type, Rows, Cols>(Elementwise(*this, other, op));
     }
-
-    std::array<T, Rows * Cols> elements{};
 };
 
 template <typename T, size_t Rows>
     requires std::is_signed_v<T>
-class Vector
+class Vector : public Array<T, Rows>
 {
+    using Array<T, Rows>::Array;
+    using Array<T, Rows>::elements;
+
   public:
-    using value_type = typename std::array<T, Rows>::value_type;
-    using pointer = typename std::array<T, Rows>::pointer;
-    using const_pointer = typename std::array<T, Rows>::const_pointer;
-    using reference = typename std::array<T, Rows>::reference;
-    using const_reference = typename std::array<T, Rows>::const_reference;
-    using iterator = typename std::array<T, Rows>::iterator;
-    using const_iterator = typename std::array<T, Rows>::const_iterator;
-    using size_type = typename std::array<T, Rows>::size_type;
-    using difference_type = typename std::array<T, Rows>::difference_type;
-    using reverse_iterator = typename std::array<T, Rows>::reverse_iterator;
-    using const_reverse_iterator = typename std::array<T, Rows>::const_reverse_iterator;
-
-    constexpr Vector() : elements{}
-    {
-    }
-
-    template <typename... U> constexpr Vector(U... elems) : elements{elems...}
-    {
-        static_assert(sizeof...(U) == Rows, "Wrong number of elements");
-        static_assert((std::is_same_v<U, T> && ...), "All arguments must be exactly T");
-    }
-
-    constexpr Vector(const std::array<T, Rows> &arr) : elements(arr)
-    {
-    }
-
-    [[nodiscard]] constexpr inline iterator begin() noexcept
-    {
-        return std::begin(elements);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
-    {
-        return std::begin(elements);
-    }
-
-    [[nodiscard]] constexpr inline iterator end() noexcept
-    {
-        return std::end(elements);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator end() const noexcept
-    {
-        return std::end(elements);
-    }
-
-    [[nodiscard]] static constexpr inline size_t size() noexcept
-    {
-        return Rows;
-    }
-
     [[nodiscard]] constexpr inline T dot(const Vector &v) const noexcept
         requires Multiplicable<T> && Addable<T>
     {
@@ -483,16 +448,6 @@ class Vector
         return elements[3];
     }
 
-    [[nodiscard]] constexpr inline const T &operator[](size_t index) const noexcept
-    {
-        return elements[index];
-    }
-
-    [[nodiscard]] constexpr inline T &operator[](size_t index) noexcept
-    {
-        return elements[index];
-    }
-
     [[nodiscard]] constexpr inline Vector cross(const Vector &v) const noexcept
         requires(Rows == 3) && Multiplicable<T> && Subtractable<T>
     {
@@ -514,8 +469,6 @@ class Vector
     {
         return std::sqrt(squared_distance(to));
     }
-
-    std::array<T, Rows> elements{};
 };
 
 template <typename T, size_t Rows1, size_t Cols1, size_t Cols2>

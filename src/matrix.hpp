@@ -264,9 +264,11 @@ template <typename T, size_t Rows, size_t Cols>
     requires std::is_signed_v<T>
 class Matrix : public Array<T, Rows * Cols>
 {
+  protected:
+    using Array<T, Rows * Cols>::elements;
+
   public:
     using Array<T, Rows * Cols>::Array;
-    using Array<T, Rows * Cols>::elements;
     using Array<T, Rows * Cols>::operator[];
 
     Matrix(std::initializer_list<std::initializer_list<T>> mat)
@@ -388,10 +390,11 @@ template <typename T, size_t Rows>
     requires std::is_signed_v<T>
 class Vector : public Array<T, Rows>
 {
-    using Array<T, Rows>::Array;
+  protected:
     using Array<T, Rows>::elements;
 
   public:
+    using Array<T, Rows>::Array;
     [[nodiscard]] constexpr inline T dot(const Vector &v) const noexcept
         requires Multiplicable<T> && Addable<T>
     {

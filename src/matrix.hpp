@@ -8,9 +8,24 @@
 #include <expected>
 #include <functional>
 #include <initializer_list>
+#include <iostream>
 #include <iterator>
 #include <numeric>
 #include <string>
+
+#define CHECK(Expr) _check(#Expr, Expr, __FILE__, __LINE__, "")
+#define CHECK_Msg(Expr, Msg) _check(#Expr, Expr, __FILE__, __LINE__, Msg)
+
+inline void _check(const char *expr_str, bool expr, const char *file, int line, const char *msg)
+{
+    if (!expr)
+    {
+        std::cerr << "Assert failed:\t" << msg << "\n"
+                  << "Expected:\t" << expr_str << "\n"
+                  << "Source:\t\t" << file << ", line " << line << "\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
 
 template <typename T>
 concept Addable = requires(T x) {
@@ -271,11 +286,11 @@ template <typename T, size_t Rows, size_t Cols> class Matrix : public Array<T, R
 
     Matrix(std::initializer_list<std::initializer_list<T>> mat)
     {
-        assert(std::size(mat) == Rows);
+        CHECK(std::size(mat) == Rows);
         size_t index = 0;
         for (const auto &row : mat)
         {
-            assert(std::size(row) == Cols);
+            CHECK(std::size(row) == Cols);
             for (const T &element : row)
             {
                 elements[index] = element;

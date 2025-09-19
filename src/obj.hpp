@@ -25,11 +25,11 @@ struct Mesh
 
 inline Mesh load_obj(const std::filesystem::path &path)
 {
-    assert(std::filesystem::exists(path));
-    assert(path.extension() == ".obj");
+    CHECK(std::filesystem::exists(path));
+    CHECK(path.extension() == ".obj");
 
     std::ifstream file(path);
-    assert(file && file.is_open());
+    CHECK(file && file.is_open());
     Mesh mesh{};
 
     std::string line;
@@ -72,7 +72,7 @@ inline Mesh load_obj(const std::filesystem::path &path)
                 face.normal_indices[index] = std::stoul(f1) - 1;
                 ++index;
             }
-            assert(index == 3);
+            CHECK(index == 3);
         }
     }
     return mesh;

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -24,8 +23,8 @@ using Vec3f = Vector<f32, 3>;
 [[nodiscard]] constexpr inline BoundingBox clamped_triangle_bounding_box(const Triangle &t,
                                                                          const BoundingBox &bounds) noexcept
 {
-    assert(bounds.top_left.x() <= bounds.bottom_right.x());
-    assert(bounds.top_left.y() <= bounds.bottom_right.y());
+    CHECK(bounds.top_left.x() <= bounds.bottom_right.x());
+    CHECK(bounds.top_left.y() <= bounds.bottom_right.y());
 
     using namespace std;
     f32 left = min(min(t.p1.x(), t.p2.x()), t.p3.x());

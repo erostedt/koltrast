@@ -1,8 +1,8 @@
-#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 
+#include "check.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"

@@ -104,11 +104,11 @@ template <std::floating_point T>
 [[nodiscard]] constexpr inline Matrix<T, 4, 4> projection_matrix(const Camera<T> &camera) noexcept
 {
     const T tol{1e-6f};
-    assert(camera.resolution.width > 0 && "No width");
-    assert(camera.far_plane > camera.near_plane + tol && "Near and far plane are the same");
+    CHECK(camera.resolution.width > 0);
+    CHECK(camera.far_plane > camera.near_plane + tol);
 
     const auto t = std::tan(radians(camera.vertical_field_of_view) / T{2});
-    assert(std::abs(t) > tol && "Bad vfov");
+    CHECK(std::abs(t) > tol);
     const auto sy = T{1} / t;
     const auto sx = sy * static_cast<T>(camera.resolution.height) / static_cast<T>(camera.resolution.width);
 
@@ -128,7 +128,7 @@ Vector<T, 3> project_to_screen(const Vector<T, 3> &world_point, const Matrix<T, 
     const Vector<T, 4> world_point_homo = {world_point.x(), world_point.y(), world_point.z(), T{1}};
     const auto camera_point_homo = view * world_point_homo;
     const Vector<T, 4> clip = proj * camera_point_homo;
-    assert(std::abs(clip.w()) > T{1e-6f});
+    CHECK(std::abs(clip.w()) > T{1e-6f});
     const Vector<T, 3> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
     const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(res.width);
     const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(res.height);

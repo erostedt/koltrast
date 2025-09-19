@@ -71,14 +71,14 @@ void write_image(const ColorImage &image)
     for_each(image, write_pixel);
 }
 
-inline f32 Edge(Vec3f p1, Vec3f p2, Vec3f p3)
+inline f32 edge(Vec3f p1, Vec3f p2, Vec3f p3)
 {
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }
 
-inline f32 Edge(const Triangle &t)
+inline f32 edge(const Triangle &t)
 {
-    return Edge(t.p1, t.p2, t.p3);
+    return edge(t.p1, t.p2, t.p3);
 }
 
 inline DepthBuffer create_depth_buffer(size_t width, size_t height)
@@ -109,9 +109,9 @@ inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds)
 void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer, IndexBuffer &index_buffer)
 {
     // Backface
-    if (Edge(t) < 0.0f)
+    if (edge(t) < 0.0f)
     {
-        std::cout << "Backface" << std::endl;
+        std::cerr << "Backface" << std::endl;
         return;
     }
 
@@ -119,10 +119,10 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
 
     if (out_of_bounds(t.p1, bounds) && out_of_bounds(t.p2, bounds) && out_of_bounds(t.p3, bounds))
     {
-        std::cout << "OOB" << std::endl;
-        std::cout << "P1: (" << t.p1.x() << " " << t.p1.y() << " " << t.p1.z() << ")" << std::endl;
-        std::cout << "P2: (" << t.p2.x() << " " << t.p2.y() << " " << t.p2.z() << ")" << std::endl;
-        std::cout << "P3: (" << t.p3.x() << " " << t.p3.y() << " " << t.p3.z() << ")" << std::endl;
+        std::cerr << "OOB" << std::endl;
+        std::cerr << "P1: (" << t.p1.x() << " " << t.p1.y() << " " << t.p1.z() << ")" << std::endl;
+        std::cerr << "P2: (" << t.p2.x() << " " << t.p2.y() << " " << t.p2.z() << ")" << std::endl;
+        std::cerr << "P3: (" << t.p3.x() << " " << t.p3.y() << " " << t.p3.z() << ")" << std::endl;
         return;
     }
 
@@ -131,10 +131,10 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
     f32 left = (f32)box.top_left.x() + 0.5f;
     f32 top = (f32)box.top_left.y() + 0.5f;
 
-    f32 w = 1.0f / Edge(t.p1, t.p2, t.p3);
-    f32 w0 = Edge(t.p2, t.p3, {left, top, 0.0f});
-    f32 w1 = Edge(t.p3, t.p1, {left, top, 0.0f});
-    f32 w2 = Edge(t.p1, t.p2, {left, top, 0.0f});
+    f32 w = 1.0f / edge(t.p1, t.p2, t.p3);
+    f32 w0 = edge(t.p2, t.p3, {left, top, 0.0f});
+    f32 w1 = edge(t.p3, t.p1, {left, top, 0.0f});
+    f32 w2 = edge(t.p1, t.p2, {left, top, 0.0f});
 
     f32 w0_dx = t.p3.y() - t.p2.y();
     f32 w0_dy = t.p2.x() - t.p3.x();

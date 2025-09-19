@@ -192,7 +192,11 @@ void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const Ind
     {
         for (u32 x = 0; x < index_buffer.width(); ++x)
         {
-            image[x, y] = colors[index_buffer[x, y]];
+            size_t index = index_buffer[x, y];
+            if (index != std::numeric_limits<size_t>::max())
+            {
+                image[x, y] = colors[index];
+            }
         }
     }
 }

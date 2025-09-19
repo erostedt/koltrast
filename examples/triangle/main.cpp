@@ -13,6 +13,8 @@
 using Vec3f = Vector<f32, 3>;
 using Vec2u = Vector<u32, 2>;
 using ColorImage = Image<RGB>;
+using DepthBuffer = Image<f32>;
+using IndexBuffer = Image<size_t>;
 
 struct Triangle
 {
@@ -80,32 +82,21 @@ inline f32 Edge(const Triangle &t)
     return Edge(t.p1, t.p2, t.p3);
 }
 
-struct DepthBuffer
+inline DepthBuffer create_depth_buffer(u32 width, u32 height)
 {
-    Image<f32> depths;
-    Image<size_t> indices;
+    using namespace std;
+    DepthBuffer buffer(width, height);
+    fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
+    return buffer;
+}
 
-    static inline DepthBuffer create(u32 width, u32 height)
-    {
-        using namespace std;
-        Image<f32> depths(width, height);
-        Image<size_t> indices(width, height);
-
-        fill(begin(depths), end(depths), numeric_limits<f32>::infinity());
-        fill(begin(indices), end(indices), numeric_limits<size_t>::max());
-        return {depths, indices};
-    }
-
-    inline f32 &depth_at(size_t x, size_t y)
-    {
-        return depths[(u32)x, (u32)y];
-    }
-
-    inline size_t &index_at(size_t x, size_t y)
-    {
-        return indices[(u32)x, (u32)y];
-    }
-};
+inline IndexBuffer create_index_buffer(u32 width, u32 height)
+{
+    using namespace std;
+    IndexBuffer buffer(width, height);
+    fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
+    return buffer;
+}
 
 inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds)
 {
@@ -116,7 +107,7 @@ inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds)
            point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
 }
 
-void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer)
+void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer, IndexBuffer &index_buffer)
 {
     // Backface
     if (Edge(t) < 0.0f)
@@ -125,7 +116,7 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
         return;
     }
 
-    BoundingBox bounds = {{0u, 0u}, {depth_buffer.depths.width(), depth_buffer.depths.height()}};
+    BoundingBox bounds = {{0u, 0u}, {depth_buffer.width(), depth_buffer.height()}};
 
     if (out_of_bounds(t.p1, bounds) && out_of_bounds(t.p2, bounds) && out_of_bounds(t.p3, bounds))
     {
@@ -171,10 +162,10 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
                 f32 l2 = w2i * w;
 
                 f32 z = l0 * t.p1.z() + l1 * t.p2.z() + l2 * t.p3.z();
-                if (z >= 0.0f && z <= 1.0f && z < depth_buffer.depth_at(x, y))
+                if (z >= 0.0f && z <= 1.0f && z < depth_buffer[x, y])
                 {
-                    depth_buffer.depth_at(x, y) = z;
-                    depth_buffer.index_at(x, y) = triangle_index;
+                    depth_buffer[x, y] = z;
+                    index_buffer[x, y] = triangle_index;
                 }
             }
             w0i += w0_dx;
@@ -187,22 +178,21 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
     }
 }
 
-void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &depth_buffer)
+void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &depth_buffer, IndexBuffer &index_buffer)
 {
     for (size_t i = 0; i < triangles.size(); ++i)
     {
-        _rasterize_triangle(i, triangles[i], depth_buffer);
+        _rasterize_triangle(i, triangles[i], depth_buffer, index_buffer);
     }
 }
 
-void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const DepthBuffer &depth_buffer)
+void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const IndexBuffer &index_buffer)
 {
-    for (u32 y = 0; y < depth_buffer.depths.height(); ++y)
+    for (u32 y = 0; y < index_buffer.height(); ++y)
     {
-        for (u32 x = 0; x < depth_buffer.depths.width(); ++x)
+        for (u32 x = 0; x < index_buffer.width(); ++x)
         {
-            size_t index = depth_buffer.indices[x, y];
-            image[x, y] = colors[index];
+            image[x, y] = colors[index_buffer[x, y]];
         }
     }
 }
@@ -233,8 +223,9 @@ int main()
     Triangle t2{ds, es, fs};
 
     ColorImage image((u32)camera.resolution.width, (u32)camera.resolution.height);
-    DepthBuffer depth_buffer = DepthBuffer::create((u32)camera.resolution.width, (u32)camera.resolution.height);
-    rasterize_triangles({t1, t2}, depth_buffer);
-    draw_triangles(image, {{255, 0, 0}, {0, 255, 0}}, depth_buffer);
+    auto depth_buffer = create_depth_buffer((u32)camera.resolution.width, (u32)camera.resolution.height);
+    auto index_buffer = create_index_buffer((u32)camera.resolution.width, (u32)camera.resolution.height);
+    rasterize_triangles({t1, t2}, depth_buffer, index_buffer);
+    draw_triangles(image, {{255, 0, 0}, {0, 255, 0}}, index_buffer);
     write_image(image);
 }

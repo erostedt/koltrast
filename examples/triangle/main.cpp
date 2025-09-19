@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 #include "camera.hpp"
 #include "image.hpp"
@@ -11,6 +12,7 @@
 
 using Vec3f = Vector<f32, 3>;
 using Vec2u = Vector<u32, 2>;
+using ColorImage = Image<RGB>;
 
 struct Triangle
 {
@@ -41,12 +43,18 @@ BoundingBox clamped_triangle_bounding_box(const Triangle &t, const BoundingBox &
     assert(bounds.top_left.y() <= bounds.bottom_right.y());
 
     using namespace std;
-    f32 left = min(min(min(t.p1.x(), t.p2.x()), t.p3.x()), (f32)bounds.top_left.x());
-    f32 top = min(min(min(t.p1.y(), t.p2.y()), t.p3.y()), (f32)bounds.top_left.y());
+    f32 left = min(min(t.p1.x(), t.p2.x()), t.p3.x());
+    u32 clamped_left = max(floor_to_u32(max(left, 0.0f)), bounds.top_left.x());
 
-    f32 right = max(max(max(t.p1.x(), t.p2.x()), t.p3.x()), (f32)bounds.bottom_right.x());
-    f32 bottom = max(max(max(t.p1.y(), t.p2.y()), t.p3.y()), (f32)bounds.bottom_right.y());
-    return {{floor_to_u32(left), floor_to_u32(top)}, {ceil_to_u32(right), ceil_to_u32(bottom)}};
+    f32 top = min(min(t.p1.y(), t.p2.y()), t.p3.y());
+    u32 clamped_top = max(floor_to_u32(max(top, 0.0f)), bounds.top_left.y());
+
+    f32 right = max(max(t.p1.x(), t.p2.x()), t.p3.x());
+    u32 clamped_right = min(ceil_to_u32(max(right, 0.0f)), bounds.bottom_right.x());
+
+    f32 bottom = max(max(t.p1.y(), t.p2.y()), t.p3.y());
+    u32 clamped_bottom = min(ceil_to_u32(max(bottom, 0.0f)), bounds.bottom_right.y());
+    return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
 }
 
 inline void write_pixel(const RGB &color)
@@ -54,7 +62,7 @@ inline void write_pixel(const RGB &color)
     std::cout << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
 }
 
-void write_image(const Image &image)
+void write_image(const ColorImage &image)
 {
     using std::ranges::for_each;
     std::cout << "P3\n";
@@ -72,14 +80,68 @@ inline f32 Edge(const Triangle &t)
     return Edge(t.p1, t.p2, t.p3);
 }
 
-void draw_triangle(Image &image, const Triangle &t, RGB color)
+struct DepthBuffer
 {
-    assert(Edge(t) >= 0.0f && "Triangle must be Screen space CCW");
-    BoundingBox box = clamped_triangle_bounding_box(t, {{0u, 0u}, {image.width(), image.height()}});
+    Image<f32> depths;
+    Image<size_t> indices;
+
+    static inline DepthBuffer create(u32 width, u32 height)
+    {
+        using namespace std;
+        Image<f32> depths(width, height);
+        Image<size_t> indices(width, height);
+
+        fill(begin(depths), end(depths), numeric_limits<f32>::infinity());
+        fill(begin(indices), end(indices), numeric_limits<size_t>::max());
+        return {depths, indices};
+    }
+
+    inline f32 &depth_at(size_t x, size_t y)
+    {
+        return depths[(u32)x, (u32)y];
+    }
+
+    inline size_t &index_at(size_t x, size_t y)
+    {
+        return indices[(u32)x, (u32)y];
+    }
+};
+
+inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds)
+{
+    // TODO: CHECK IF CORRECT INEQUALITIES
+    return point.x() < static_cast<f32>(bounds.top_left.x()) ||
+           point.x() >= static_cast<f32>(bounds.bottom_right.x()) ||
+           point.y() < static_cast<f32>(bounds.top_left.y()) ||
+           point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
+}
+
+void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer)
+{
+    // Backface
+    if (Edge(t) < 0.0f)
+    {
+        std::cout << "Backface" << std::endl;
+        return;
+    }
+
+    BoundingBox bounds = {{0u, 0u}, {depth_buffer.depths.width(), depth_buffer.depths.height()}};
+
+    if (out_of_bounds(t.p1, bounds) && out_of_bounds(t.p2, bounds) && out_of_bounds(t.p3, bounds))
+    {
+        std::cout << "OOB" << std::endl;
+        std::cout << "P1: (" << t.p1.x() << " " << t.p1.y() << " " << t.p1.z() << ")" << std::endl;
+        std::cout << "P2: (" << t.p2.x() << " " << t.p2.y() << " " << t.p2.z() << ")" << std::endl;
+        std::cout << "P3: (" << t.p3.x() << " " << t.p3.y() << " " << t.p3.z() << ")" << std::endl;
+        return;
+    }
+
+    BoundingBox box = clamped_triangle_bounding_box(t, bounds);
 
     f32 left = (f32)box.top_left.x() + 0.5f;
     f32 top = (f32)box.top_left.y() + 0.5f;
 
+    f32 w = 1.0f / Edge(t.p1, t.p2, t.p3);
     f32 w0 = Edge(t.p2, t.p3, {left, top, 0.0f});
     f32 w1 = Edge(t.p3, t.p1, {left, top, 0.0f});
     f32 w2 = Edge(t.p1, t.p2, {left, top, 0.0f});
@@ -103,7 +165,17 @@ void draw_triangle(Image &image, const Triangle &t, RGB color)
         {
             if (w0i >= 0 && w1i >= 0 && w2i >= 0)
             {
-                image[x, y] = color;
+
+                f32 l0 = w0i * w;
+                f32 l1 = w1i * w;
+                f32 l2 = w2i * w;
+
+                f32 z = l0 * t.p1.z() + l1 * t.p2.z() + l2 * t.p3.z();
+                if (z >= 0.0f && z <= 1.0f && z < depth_buffer.depth_at(x, y))
+                {
+                    depth_buffer.depth_at(x, y) = z;
+                    depth_buffer.index_at(x, y) = triangle_index;
+                }
             }
             w0i += w0_dx;
             w1i += w1_dx;
@@ -115,31 +187,54 @@ void draw_triangle(Image &image, const Triangle &t, RGB color)
     }
 }
 
+void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &depth_buffer)
+{
+    for (size_t i = 0; i < triangles.size(); ++i)
+    {
+        _rasterize_triangle(i, triangles[i], depth_buffer);
+    }
+}
+
+void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const DepthBuffer &depth_buffer)
+{
+    for (u32 y = 0; y < depth_buffer.depths.height(); ++y)
+    {
+        for (u32 x = 0; x < depth_buffer.depths.width(); ++x)
+        {
+            size_t index = depth_buffer.indices[x, y];
+            image[x, y] = colors[index];
+        }
+    }
+}
+
 int main()
 {
-    const Camera<f32> camera = {{1280, 720}, 90, 1.0f, 10.0f};
-    const auto view = look_at(Vector<f32, 3>{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
+    const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
+    const auto view = look_at(Vector<f32, 3>{0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
-    const Vector<f32, 3> a{-1.0f, -1.0f, -2.0f};
-    const Vector<f32, 3> b{1.0f, -1.0f, -2.0f};
+    const Vector<f32, 3> a{-1.0f, -1.0f, -1.0f};
+    const Vector<f32, 3> b{2.0f, -1.0f, -3.0f};
     const Vector<f32, 3> c{0.0f, 1.0f, -2.0f};
 
-    // const Vector<f32, 3> d{-1.0f, -1.0f, -2.0f};
-    // const Vector<f32, 3> e{1.0f, -1.0f, -2.0f};
-    // const Vector<f32, 3> f{0.0f, 1.0f, -2.0f};
+    const Vector<f32, 3> d{1.0f, -1.0f, -1.0f};
+    const Vector<f32, 3> e{0.0f, 1.0f, -2.0f};
+    const Vector<f32, 3> f{-2.0f, -1.0f, -3.0f};
 
     const auto as = project_to_screen(a, view, proj, camera.resolution);
     const auto bs = project_to_screen(b, view, proj, camera.resolution);
     const auto cs = project_to_screen(c, view, proj, camera.resolution);
 
-    // const auto ds = project_to_screen(a, view, proj, camera.resolution);
-    // const auto es = project_to_screen(b, view, proj, camera.resolution);
-    // const auto fs = project_to_screen(c, view, proj, camera.resolution);
+    const auto ds = project_to_screen(d, view, proj, camera.resolution);
+    const auto es = project_to_screen(e, view, proj, camera.resolution);
+    const auto fs = project_to_screen(f, view, proj, camera.resolution);
 
     Triangle t1{as, bs, cs};
+    Triangle t2{ds, es, fs};
 
-    Image image((u32)camera.resolution.width, (u32)camera.resolution.height);
-    draw_triangle(image, t1, {255, 0, 0});
+    ColorImage image((u32)camera.resolution.width, (u32)camera.resolution.height);
+    DepthBuffer depth_buffer = DepthBuffer::create((u32)camera.resolution.width, (u32)camera.resolution.height);
+    rasterize_triangles({t1, t2}, depth_buffer);
+    draw_triangles(image, {{255, 0, 0}, {0, 255, 0}}, depth_buffer);
     write_image(image);
 }

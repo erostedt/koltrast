@@ -12,10 +12,10 @@ struct RGB
     u8 b;
 };
 
-class Image
+template <typename T> class Image
 {
-    using iterator = std::vector<RGB>::iterator;
-    using const_iterator = std::vector<RGB>::const_iterator;
+    using iterator = std::vector<T>::iterator;
+    using const_iterator = std::vector<T>::const_iterator;
 
   public:
     Image(u32 width, u32 height) : m_width(width), m_height(height), pixels(width * height)
@@ -32,22 +32,22 @@ class Image
         return m_height;
     }
 
-    inline RGB &operator[](u32 i)
+    inline T &operator[](u32 i)
     {
         return pixels[i];
     }
 
-    inline RGB &operator[](u32 x, u32 y)
+    inline T &operator[](u32 x, u32 y)
     {
         return operator[](y * m_width + x);
     }
 
-    inline const RGB &operator[](u32 i) const
+    inline const T &operator[](u32 i) const
     {
         return pixels[i];
     }
 
-    inline const RGB &operator[](u32 x, u32 y) const
+    inline const T &operator[](u32 x, u32 y) const
     {
         return operator[](y * m_width + x);
     }
@@ -75,5 +75,5 @@ class Image
   private:
     u32 m_width;
     u32 m_height;
-    std::vector<RGB> pixels;
+    std::vector<T> pixels;
 };

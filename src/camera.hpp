@@ -29,11 +29,11 @@ template <std::floating_point T>
 [[nodiscard]] constexpr inline Matrix<T, 4, 4> projection_matrix(const Camera<T> &camera) noexcept
 {
     const T tol{1e-6f};
-    assert(camera.resolution.width > 0);
-    assert(camera.far_plane > camera.near_plane + tol);
+    assert(camera.resolution.width > 0 && "No width");
+    assert(camera.far_plane > camera.near_plane + tol && "Near and far plane are the same");
 
     const auto t = std::tan(radians(camera.vertical_field_of_view) / T{2});
-    assert(std::abs(t) > tol);
+    assert(std::abs(t) > tol && "Bad vfov");
     const auto sy = T{1} / t;
     const auto sx = sy * static_cast<T>(camera.resolution.height) / static_cast<T>(camera.resolution.width);
 

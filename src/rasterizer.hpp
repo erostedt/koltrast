@@ -3,23 +3,21 @@
 #include "matrix.hpp"
 #include "types.hpp"
 
-using Vec3f = Vector<f32, 3>;
-using Vec2s = Vector<size_t, 2>;
 using ColorImage = Image<RGB>;
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
 
 struct Triangle
 {
-    Vec3f p1;
-    Vec3f p2;
-    Vec3f p3;
+    Vector<f32, 3> p1;
+    Vector<f32, 3> p2;
+    Vector<f32, 3> p3;
 };
 
 struct BoundingBox
 {
-    Vec2s top_left;
-    Vec2s bottom_right;
+    Vector<size_t, 2> top_left;
+    Vector<size_t, 2> bottom_right;
 };
 
 [[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height);

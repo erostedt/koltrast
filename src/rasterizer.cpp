@@ -5,8 +5,11 @@
 #include <limits>
 
 #include "camera.hpp"
+#include "matrix.hpp"
 #include "rasterizer.hpp"
 #include "types.hpp"
+
+using Vec3f = Vector<f32, 3>;
 
 [[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
 {

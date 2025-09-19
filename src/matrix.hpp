@@ -433,25 +433,49 @@ template <typename T, size_t Rows> class Vector : public Array<T, Rows>
         return std::expected<Vector, std::string>((*this) / std::sqrt(sq_len));
     }
 
-    [[nodiscard]] constexpr inline T x() const noexcept
+    [[nodiscard]] constexpr inline const T &x() const noexcept
         requires(Rows >= 1 && Rows <= 4)
     {
         return elements[0];
     }
 
-    [[nodiscard]] constexpr inline T y() const noexcept
+    [[nodiscard]] constexpr inline T &x() noexcept
+        requires(Rows >= 1 && Rows <= 4)
+    {
+        return elements[0];
+    }
+
+    [[nodiscard]] constexpr inline const T &y() const noexcept
         requires(Rows >= 2 && Rows <= 4)
     {
         return elements[1];
     }
 
-    [[nodiscard]] constexpr inline T z() const noexcept
+    [[nodiscard]] constexpr inline T &y() noexcept
+        requires(Rows >= 2 && Rows <= 4)
+    {
+        return elements[1];
+    }
+
+    [[nodiscard]] constexpr inline const T &z() const noexcept
         requires(Rows >= 3 && Rows <= 4)
     {
         return elements[2];
     }
 
-    [[nodiscard]] constexpr inline T w() const noexcept
+    [[nodiscard]] constexpr inline T &z() noexcept
+        requires(Rows >= 3 && Rows <= 4)
+    {
+        return elements[2];
+    }
+
+    [[nodiscard]] constexpr inline const T &w() const noexcept
+        requires(Rows == 4)
+    {
+        return elements[3];
+    }
+
+    [[nodiscard]] constexpr inline T &w() noexcept
         requires(Rows == 4)
     {
         return elements[3];

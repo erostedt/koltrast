@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS
 )
 
 set(EXAMPLES_PATH examples)
-set(BUILD_PATH build)
+set(BUILD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(LIB_NAME ${PROJECT_NAME})
 set(SRC_PATH src)
 set(THIRD_PARTY third_party)
@@ -17,9 +17,7 @@ include_directories(${SRC_PATH})
 include_directories(${THIRD_PARTY})
 file(GLOB source_files ${SRC_PATH}/*.cpp)
 
-if(source_files)
-  add_library(${LIB_NAME} ${source_files})
-endif()
+add_library(${LIB_NAME} ${source_files})
 
 add_subdirectory(tests)
 add_subdirectory(examples)

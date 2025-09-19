@@ -1,0 +1,186 @@
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+#include <limits>
+
+#include "camera.hpp"
+#include "rasterizer.hpp"
+#include "types.hpp"
+
+[[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
+{
+    return static_cast<size_t>(std::floor(x));
+}
+
+[[nodiscard]] constexpr inline size_t ceil_to_size(f32 x) noexcept
+{
+    return static_cast<size_t>(std::ceil(x));
+}
+
+[[nodiscard]] constexpr inline BoundingBox clamped_triangle_bounding_box(const Triangle &t,
+                                                                         const BoundingBox &bounds) noexcept
+{
+    assert(bounds.top_left.x() <= bounds.bottom_right.x());
+    assert(bounds.top_left.y() <= bounds.bottom_right.y());
+
+    using namespace std;
+    f32 left = min(min(t.p1.x(), t.p2.x()), t.p3.x());
+    size_t clamped_left = max(floor_to_size(max(left, 0.0f)), bounds.top_left.x());
+
+    f32 top = min(min(t.p1.y(), t.p2.y()), t.p3.y());
+    size_t clamped_top = max(floor_to_size(max(top, 0.0f)), bounds.top_left.y());
+
+    f32 right = max(max(t.p1.x(), t.p2.x()), t.p3.x());
+    size_t clamped_right = min(ceil_to_size(max(right, 0.0f)), bounds.bottom_right.x());
+
+    f32 bottom = max(max(t.p1.y(), t.p2.y()), t.p3.y());
+    size_t clamped_bottom = min(ceil_to_size(max(bottom, 0.0f)), bounds.bottom_right.y());
+    return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
+}
+
+[[nodiscard]] constexpr inline f32 edge(Vec3f p1, Vec3f p2, Vec3f p3) noexcept
+{
+    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
+}
+
+[[nodiscard]] constexpr inline f32 edge(const Triangle &t) noexcept
+{
+    return edge(t.p1, t.p2, t.p3);
+}
+
+[[nodiscard]] constexpr inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds) noexcept
+{
+    // TODO: CHECK IF CORRECT INEQUALITIES
+    return point.x() < static_cast<f32>(bounds.top_left.x()) ||
+           point.x() >= static_cast<f32>(bounds.bottom_right.x()) ||
+           point.y() < static_cast<f32>(bounds.top_left.y()) ||
+           point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
+}
+
+constexpr inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer,
+                                         IndexBuffer &index_buffer) noexcept
+{
+    // Backface
+    if (edge(t) < 0.0f)
+    {
+        std::cerr << "Backface" << std::endl;
+        return;
+    }
+
+    BoundingBox bounds = {{0u, 0u}, {depth_buffer.width(), depth_buffer.height()}};
+
+    if (out_of_bounds(t.p1, bounds) && out_of_bounds(t.p2, bounds) && out_of_bounds(t.p3, bounds))
+    {
+        std::cerr << "OOB" << std::endl;
+        std::cerr << "P1: (" << t.p1.x() << " " << t.p1.y() << " " << t.p1.z() << ")" << std::endl;
+        std::cerr << "P2: (" << t.p2.x() << " " << t.p2.y() << " " << t.p2.z() << ")" << std::endl;
+        std::cerr << "P3: (" << t.p3.x() << " " << t.p3.y() << " " << t.p3.z() << ")" << std::endl;
+        return;
+    }
+
+    BoundingBox box = clamped_triangle_bounding_box(t, bounds);
+
+    f32 left = (f32)box.top_left.x() + 0.5f;
+    f32 top = (f32)box.top_left.y() + 0.5f;
+
+    f32 w = 1.0f / edge(t.p1, t.p2, t.p3);
+    f32 w0 = edge(t.p2, t.p3, {left, top, 0.0f});
+    f32 w1 = edge(t.p3, t.p1, {left, top, 0.0f});
+    f32 w2 = edge(t.p1, t.p2, {left, top, 0.0f});
+
+    f32 w0_dx = t.p3.y() - t.p2.y();
+    f32 w0_dy = t.p2.x() - t.p3.x();
+
+    f32 w1_dx = t.p1.y() - t.p3.y();
+    f32 w1_dy = t.p3.x() - t.p1.x();
+
+    f32 w2_dx = t.p2.y() - t.p1.y();
+    f32 w2_dy = t.p1.x() - t.p2.x();
+
+    for (size_t y = box.top_left.y(); y < box.bottom_right.y(); ++y)
+    {
+        f32 w0i = w0;
+        f32 w1i = w1;
+        f32 w2i = w2;
+
+        for (size_t x = box.top_left.x(); x < box.bottom_right.x(); ++x)
+        {
+            if (w0i >= 0 && w1i >= 0 && w2i >= 0)
+            {
+
+                f32 l0 = w0i * w;
+                f32 l1 = w1i * w;
+                f32 l2 = w2i * w;
+
+                f32 z = l0 * t.p1.z() + l1 * t.p2.z() + l2 * t.p3.z();
+                if (z >= 0.0f && z <= 1.0f && z < depth_buffer[x, y])
+                {
+                    depth_buffer[x, y] = z;
+                    index_buffer[x, y] = triangle_index;
+                }
+            }
+            w0i += w0_dx;
+            w1i += w1_dx;
+            w2i += w2_dx;
+        }
+        w0 += w0_dy;
+        w1 += w1_dy;
+        w2 += w2_dy;
+    }
+}
+
+/// ------------------------------------------ Public API ------------------------------------------
+
+[[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height)
+{
+    using namespace std;
+    DepthBuffer buffer(width, height);
+    fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
+    return buffer;
+}
+
+[[nodiscard]] IndexBuffer create_index_buffer(size_t width, size_t height)
+{
+    using namespace std;
+    IndexBuffer buffer(width, height);
+    fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
+    return buffer;
+}
+
+void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &depth_buffer,
+                         IndexBuffer &index_buffer) noexcept
+{
+    for (size_t i = 0; i < triangles.size(); ++i)
+    {
+        rasterize_triangle(i, triangles[i], depth_buffer, index_buffer);
+    }
+}
+
+void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const IndexBuffer &index_buffer) noexcept
+{
+    for (size_t y = 0; y < index_buffer.height(); ++y)
+    {
+        for (size_t x = 0; x < index_buffer.width(); ++x)
+        {
+            size_t index = index_buffer[x, y];
+            if (index != std::numeric_limits<size_t>::max())
+            {
+                image[x, y] = colors[index];
+            }
+        }
+    }
+}
+
+void dump_ppm(const ColorImage &image, std::ostream &stream)
+{
+    using std::ranges::for_each;
+    stream << "P3\n";
+    stream << image.width() << ' ' << image.height() << "\n255\n";
+
+    const auto write_pixel = [&stream](const auto &color) {
+        stream << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
+    };
+
+    for_each(image, write_pixel);
+}

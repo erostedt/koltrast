@@ -382,6 +382,19 @@ template <typename T, size_t Rows, size_t Cols> class Matrix : public Array<T, R
 
         return std::expected<Matrix, std::string>(inv);
     }
+
+    [[nodiscard]] constexpr Matrix<T, Cols, Rows> transposed() const noexcept
+    {
+        Matrix<T, Cols, Rows> t{};
+        for (size_t row = 0; row < Rows; ++row)
+        {
+            for (size_t col = 0; col < Cols; ++col)
+            {
+                t[col, row] = operator[](row, col);
+            }
+        }
+        return t;
+    }
 };
 
 template <typename T, size_t Rows> class Vector : public Array<T, Rows>

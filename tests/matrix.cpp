@@ -365,6 +365,19 @@ UTEST(matrix, mat_inverse_singular_cols_dependant)
     ASSERT_FALSE(inv.has_value());
 }
 
+UTEST(matrix, transpose)
+{
+    using namespace std;
+    const Matrix<i32, 3, 2> mat = {
+        {1, 2},
+        {3, 4},
+        {5, 6},
+    };
+    const Matrix<i32, 2, 3> actual = mat.transposed();
+    const Matrix<i32, 2, 3> expected = {{1, 3, 5}, {2, 4, 6}};
+    ASSERT_EQ(expected, actual);
+}
+
 UTEST(vector2, accessors)
 {
     const Vector<int, 2> u = {2, 1};

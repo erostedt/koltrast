@@ -25,17 +25,17 @@ struct BoundingBox
     Vec2u bottom_right;
 };
 
-inline u32 FloorToU32(f32 x)
+inline u32 floor_to_u32(f32 x)
 {
     return static_cast<u32>(std::floor(x));
 }
 
-inline u32 CeilToU32(f32 x)
+inline u32 ceil_to_u32(f32 x)
 {
     return static_cast<u32>(std::ceil(x));
 }
 
-BoundingBox ClampedTriangleBoundingBox(const Triangle &t, const BoundingBox &bounds)
+BoundingBox clamped_triangle_bounding_box(const Triangle &t, const BoundingBox &bounds)
 {
     assert(bounds.top_left.x() <= bounds.bottom_right.x());
     assert(bounds.top_left.y() <= bounds.bottom_right.y());
@@ -46,20 +46,20 @@ BoundingBox ClampedTriangleBoundingBox(const Triangle &t, const BoundingBox &bou
 
     f32 right = max(max(max(t.p1.x(), t.p2.x()), t.p3.x()), (f32)bounds.bottom_right.x());
     f32 bottom = max(max(max(t.p1.y(), t.p2.y()), t.p3.y()), (f32)bounds.bottom_right.y());
-    return {{FloorToU32(left), FloorToU32(top)}, {CeilToU32(right), CeilToU32(bottom)}};
+    return {{floor_to_u32(left), floor_to_u32(top)}, {ceil_to_u32(right), ceil_to_u32(bottom)}};
 }
 
-inline void WritePixel(const RGB &color)
+inline void write_pixel(const RGB &color)
 {
     std::cout << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
 }
 
-void WriteImage(const Image &image)
+void write_image(const Image &image)
 {
     using std::ranges::for_each;
     std::cout << "P3\n";
     std::cout << image.width() << ' ' << image.height() << "\n255\n";
-    for_each(image, WritePixel);
+    for_each(image, write_pixel);
 }
 
 inline f32 Edge(Vec3f p1, Vec3f p2, Vec3f p3)
@@ -72,10 +72,10 @@ inline f32 Edge(const Triangle &t)
     return Edge(t.p1, t.p2, t.p3);
 }
 
-void DrawTriangle(Image &image, const Triangle &t, RGB color)
+void draw_triangle(Image &image, const Triangle &t, RGB color)
 {
     assert(Edge(t) >= 0.0f && "Triangle must be Screen space CCW");
-    BoundingBox box = ClampedTriangleBoundingBox(t, {{0u, 0u}, {image.width(), image.height()}});
+    BoundingBox box = clamped_triangle_bounding_box(t, {{0u, 0u}, {image.width(), image.height()}});
 
     f32 left = (f32)box.top_left.x() + 0.5f;
     f32 top = (f32)box.top_left.y() + 0.5f;
@@ -140,6 +140,6 @@ int main()
     Triangle t1{as, bs, cs};
 
     Image image((u32)camera.resolution.width, (u32)camera.resolution.height);
-    DrawTriangle(image, t1, {255, 0, 0});
-    WriteImage(image);
+    draw_triangle(image, t1, {255, 0, 0});
+    write_image(image);
 }

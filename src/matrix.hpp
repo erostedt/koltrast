@@ -260,9 +260,7 @@ concept Square = requires(Matrix m) {
     { m.rows() == m.cols() };
 };
 
-template <typename T, size_t Rows, size_t Cols>
-    requires std::is_signed_v<T>
-class Matrix : public Array<T, Rows * Cols>
+template <typename T, size_t Rows, size_t Cols> class Matrix : public Array<T, Rows * Cols>
 {
   protected:
     using Array<T, Rows * Cols>::elements;
@@ -386,9 +384,7 @@ class Matrix : public Array<T, Rows * Cols>
     }
 };
 
-template <typename T, size_t Rows>
-    requires std::is_signed_v<T>
-class Vector : public Array<T, Rows>
+template <typename T, size_t Rows> class Vector : public Array<T, Rows>
 {
   protected:
     using Array<T, Rows>::elements;

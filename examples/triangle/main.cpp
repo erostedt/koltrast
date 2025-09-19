@@ -5,13 +5,12 @@
 #include <limits>
 
 #include "camera.hpp"
-#include "image.hpp"
 #include "matrix.hpp"
 #include "transform.hpp"
 #include "types.hpp"
 
 using Vec3f = Vector<f32, 3>;
-using Vec2u = Vector<u32, 2>;
+using Vec2s = Vector<size_t, 2>;
 using ColorImage = Image<RGB>;
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
@@ -25,18 +24,18 @@ struct Triangle
 
 struct BoundingBox
 {
-    Vec2u top_left;
-    Vec2u bottom_right;
+    Vec2s top_left;
+    Vec2s bottom_right;
 };
 
-inline u32 floor_to_u32(f32 x)
+inline size_t floor_to_size(f32 x)
 {
-    return static_cast<u32>(std::floor(x));
+    return static_cast<size_t>(std::floor(x));
 }
 
-inline u32 ceil_to_u32(f32 x)
+inline size_t ceil_to_size(f32 x)
 {
-    return static_cast<u32>(std::ceil(x));
+    return static_cast<size_t>(std::ceil(x));
 }
 
 BoundingBox clamped_triangle_bounding_box(const Triangle &t, const BoundingBox &bounds)
@@ -46,16 +45,16 @@ BoundingBox clamped_triangle_bounding_box(const Triangle &t, const BoundingBox &
 
     using namespace std;
     f32 left = min(min(t.p1.x(), t.p2.x()), t.p3.x());
-    u32 clamped_left = max(floor_to_u32(max(left, 0.0f)), bounds.top_left.x());
+    size_t clamped_left = max(floor_to_size(max(left, 0.0f)), bounds.top_left.x());
 
     f32 top = min(min(t.p1.y(), t.p2.y()), t.p3.y());
-    u32 clamped_top = max(floor_to_u32(max(top, 0.0f)), bounds.top_left.y());
+    size_t clamped_top = max(floor_to_size(max(top, 0.0f)), bounds.top_left.y());
 
     f32 right = max(max(t.p1.x(), t.p2.x()), t.p3.x());
-    u32 clamped_right = min(ceil_to_u32(max(right, 0.0f)), bounds.bottom_right.x());
+    size_t clamped_right = min(ceil_to_size(max(right, 0.0f)), bounds.bottom_right.x());
 
     f32 bottom = max(max(t.p1.y(), t.p2.y()), t.p3.y());
-    u32 clamped_bottom = min(ceil_to_u32(max(bottom, 0.0f)), bounds.bottom_right.y());
+    size_t clamped_bottom = min(ceil_to_size(max(bottom, 0.0f)), bounds.bottom_right.y());
     return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
 }
 
@@ -82,7 +81,7 @@ inline f32 Edge(const Triangle &t)
     return Edge(t.p1, t.p2, t.p3);
 }
 
-inline DepthBuffer create_depth_buffer(u32 width, u32 height)
+inline DepthBuffer create_depth_buffer(size_t width, size_t height)
 {
     using namespace std;
     DepthBuffer buffer(width, height);
@@ -90,7 +89,7 @@ inline DepthBuffer create_depth_buffer(u32 width, u32 height)
     return buffer;
 }
 
-inline IndexBuffer create_index_buffer(u32 width, u32 height)
+inline IndexBuffer create_index_buffer(size_t width, size_t height)
 {
     using namespace std;
     IndexBuffer buffer(width, height);
@@ -146,13 +145,13 @@ void _rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &
     f32 w2_dx = t.p2.y() - t.p1.y();
     f32 w2_dy = t.p1.x() - t.p2.x();
 
-    for (u32 y = box.top_left.y(); y < box.bottom_right.y(); ++y)
+    for (size_t y = box.top_left.y(); y < box.bottom_right.y(); ++y)
     {
         f32 w0i = w0;
         f32 w1i = w1;
         f32 w2i = w2;
 
-        for (u32 x = box.top_left.x(); x < box.bottom_right.x(); ++x)
+        for (size_t x = box.top_left.x(); x < box.bottom_right.x(); ++x)
         {
             if (w0i >= 0 && w1i >= 0 && w2i >= 0)
             {
@@ -188,9 +187,9 @@ void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &de
 
 void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const IndexBuffer &index_buffer)
 {
-    for (u32 y = 0; y < index_buffer.height(); ++y)
+    for (size_t y = 0; y < index_buffer.height(); ++y)
     {
-        for (u32 x = 0; x < index_buffer.width(); ++x)
+        for (size_t x = 0; x < index_buffer.width(); ++x)
         {
             size_t index = index_buffer[x, y];
             if (index != std::numeric_limits<size_t>::max())
@@ -226,9 +225,9 @@ int main()
     Triangle t1{as, bs, cs};
     Triangle t2{ds, es, fs};
 
-    ColorImage image((u32)camera.resolution.width, (u32)camera.resolution.height);
-    auto depth_buffer = create_depth_buffer((u32)camera.resolution.width, (u32)camera.resolution.height);
-    auto index_buffer = create_index_buffer((u32)camera.resolution.width, (u32)camera.resolution.height);
+    ColorImage image(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
+    auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
     rasterize_triangles({t1, t2}, depth_buffer, index_buffer);
     draw_triangles(image, {{255, 0, 0}, {0, 255, 0}}, index_buffer);
     write_image(image);

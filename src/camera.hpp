@@ -1,8 +1,18 @@
 #pragma once
 
 #include "matrix.hpp"
+#include "types.hpp"
+#include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <vector>
+
+struct RGB
+{
+    u8 r;
+    u8 g;
+    u8 b;
+};
 
 struct Resolution
 {
@@ -18,6 +28,71 @@ template <std::floating_point T> struct Camera
     Degrees vertical_field_of_view;
     T near_plane;
     T far_plane;
+};
+
+template <typename T> class Image
+{
+    using iterator = std::vector<T>::iterator;
+    using const_iterator = std::vector<T>::const_iterator;
+
+  public:
+    Image(size_t width, size_t height) : resolution(width, height), pixels(width * height)
+    {
+    }
+
+    [[nodiscard]] constexpr inline size_t width() const noexcept
+    {
+        return resolution.width;
+    }
+
+    [[nodiscard]] constexpr inline size_t height() const noexcept
+    {
+        return resolution.height;
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t i) noexcept
+    {
+        return pixels[i];
+    }
+
+    [[nodiscard]] constexpr inline T &operator[](size_t x, size_t y) noexcept
+    {
+        return operator[](y * width() + x);
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t i) const
+    {
+        return pixels[i];
+    }
+
+    [[nodiscard]] constexpr inline const T &operator[](size_t x, size_t y) const noexcept
+    {
+        return operator[](y * width() + x);
+    }
+
+    [[nodiscard]] constexpr inline iterator begin() noexcept
+    {
+        return std::begin(pixels);
+    }
+
+    [[nodiscard]] constexpr inline iterator end() noexcept
+    {
+        return std::end(pixels);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
+    {
+        return std::cbegin(pixels);
+    }
+
+    [[nodiscard]] constexpr inline const_iterator end() const noexcept
+    {
+        return std::cend(pixels);
+    }
+
+  private:
+    Resolution resolution;
+    std::vector<T> pixels;
 };
 
 template <std::floating_point T> [[nodiscard]] constexpr inline T radians(T degrees) noexcept

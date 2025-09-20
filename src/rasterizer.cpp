@@ -70,9 +70,8 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
 {
     // Backface
     f32 area = edge(p1, p2, p3);
-    if (area < 0.0f)
+    if (area <= 0.0f)
     {
-        std::cerr << "Backface" << std::endl;
         return;
     }
 

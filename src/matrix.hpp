@@ -44,7 +44,7 @@ concept Subtractable = requires(T x) {
 
 template <typename T>
 concept SelfSubtractable = requires(T x) {
-    { x -= x } -> std::same_as<T>;
+    { x -= x };
 };
 
 template <typename T>
@@ -58,8 +58,18 @@ concept Multiplicable = requires(T x) {
 };
 
 template <typename T>
+concept SelfMultiplicable = requires(T x) {
+    { x *= x };
+};
+
+template <typename T>
 concept Divisable = requires(T a) {
     { a / a } -> std::same_as<T>;
+};
+
+template <typename T>
+concept SelfDivisable = requires(T x) {
+    { x /= x };
 };
 
 template <typename T>
@@ -74,13 +84,25 @@ template <typename T>
 concept ElementwiseAddable = ElementwiseOperable<T> && Addable<typename T::value_type>;
 
 template <typename T>
+concept ElementwiseSelfAddable = ElementwiseOperable<T> && SelfAddable<typename T::value_type>;
+
+template <typename T>
 concept ElementwiseSubtractable = ElementwiseOperable<T> && Subtractable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseSelfSubtractable = ElementwiseOperable<T> && SelfSubtractable<typename T::value_type>;
 
 template <typename T>
 concept ElementwiseMultiplicable = ElementwiseOperable<T> && Multiplicable<typename T::value_type>;
 
 template <typename T>
+concept ElementwiseSelfMultiplicable = ElementwiseOperable<T> && SelfMultiplicable<typename T::value_type>;
+
+template <typename T>
 concept ElementwiseDivisable = ElementwiseOperable<T> && Divisable<typename T::value_type>;
+
+template <typename T>
+concept ElementwiseSelfDivisable = ElementwiseOperable<T> && SelfDivisable<typename T::value_type>;
 
 template <typename T>
 concept ElementwiseNegatable = ElementwiseOperable<T> && Negatable<typename T::value_type>;
@@ -89,41 +111,79 @@ template <typename T>
 concept ElementwiseEquatable = ElementwiseOperable<T> && std::equality_comparable<typename T::value_type>;
 
 template <ElementwiseOperable Container, typename UnaryOperation>
-constexpr Container map(const Container &left, UnaryOperation op)
+constexpr void transform(Container &left, UnaryOperation op) noexcept
 {
     using namespace std;
-    Container out;
-    transform(begin(left), end(left), begin(out), op);
-    return out;
+    std::transform(begin(left), end(left), begin(left), op);
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container map(const Container &left, const Container &right, BinaryOperation op)
+constexpr void transform(Container &left, const Container &right, BinaryOperation op) noexcept
 {
     using namespace std;
-    Container out;
-    transform(begin(left), end(left), begin(right), begin(out), op);
-    return out;
+    std::transform(begin(left), end(left), begin(right), begin(left), op);
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container map(const Container &left, const typename Container::value_type &right, BinaryOperation op)
+constexpr void transform(Container &left, const typename Container::value_type &right, BinaryOperation op) noexcept
 {
     using namespace std;
     using T = typename Container::value_type;
-    Container out;
-    transform(begin(left), end(left), begin(out), [&right, &op](const T &element) { return op(element, right); });
+    transform(begin(left), end(left), begin(left), [&right, &op](const T &element) { return op(element, right); });
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+constexpr void transform(const typename Container::value_type &left, Container &right, BinaryOperation op) noexcept
+{
+    using namespace std;
+    using T = typename Container::value_type;
+    transform(begin(right), end(right), begin(right), [&left, &op](const T &element) { return op(left, element); });
+}
+
+template <ElementwiseOperable Container, typename UnaryOperation>
+[[nodiscard]] constexpr Container map(const Container &left, UnaryOperation op) noexcept
+{
+    Container out = left;
+    transform(out, op);
     return out;
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container map(const typename Container::value_type &left, const Container &right, BinaryOperation op)
+[[nodiscard]] constexpr Container map(const Container &left, const Container &right, BinaryOperation op) noexcept
 {
-    using namespace std;
-    using T = typename Container::value_type;
-    Container out;
-    transform(begin(right), end(right), begin(out), [&left, &op](const T &element) { return op(left, element); });
+    Container out = left;
+    transform(out, right, op);
     return out;
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+[[nodiscard]] constexpr Container map(const Container &left, const typename Container::value_type &right,
+                                      BinaryOperation op) noexcept
+{
+    Container out = left;
+    transform(out, right, op);
+    return out;
+}
+
+template <ElementwiseOperable Container, typename BinaryOperation>
+[[nodiscard]] constexpr Container map(const typename Container::value_type &left, const Container &right,
+                                      BinaryOperation op) noexcept
+{
+    Container out = right;
+    transform(left, out, op);
+    return out;
+}
+
+template <ElementwiseSelfAddable Container>
+constexpr inline void operator+=(Container &left, const Container &right) noexcept
+{
+    transform(left, right, std::plus<typename Container::value_type>{});
+}
+
+template <ElementwiseSelfAddable Container>
+constexpr inline void operator+=(Container &left, const typename Container::value_type &right) noexcept
+{
+    transform(left, right, std::plus<typename Container::value_type>{});
 }
 
 template <ElementwiseAddable Container>
@@ -166,6 +226,18 @@ template <ElementwiseSubtractable Container>
     return map(left, right, std::minus<typename Container::value_type>{});
 }
 
+template <ElementwiseSelfSubtractable Container>
+constexpr inline void operator-=(Container &left, const Container &right) noexcept
+{
+    transform(left, right, std::minus<typename Container::value_type>{});
+}
+
+template <ElementwiseSelfSubtractable Container>
+constexpr inline void operator-=(Container &left, const typename Container::value_type &right) noexcept
+{
+    transform(left, right, std::minus<typename Container::value_type>{});
+}
+
 template <ElementwiseNegatable Container>
 [[nodiscard]] constexpr inline Container operator-(const Container &v) noexcept
 {
@@ -189,11 +261,23 @@ template <ElementwiseMultiplicable Container>
     return map(left, right, std::multiplies<typename Container::value_type>{});
 }
 
+template <ElementwiseSelfMultiplicable Container>
+constexpr inline void operator*=(Container &left, const typename Container::value_type &right) noexcept
+{
+    transform(left, right, std::multiplies<typename Container::value_type>{});
+}
+
 template <ElementwiseDivisable Container>
 [[nodiscard]] constexpr inline Container operator/(const Container &numerator,
                                                    const typename Container::value_type &denominator) noexcept
 {
     return map(numerator, denominator, std::divides<typename Container::value_type>{});
+}
+
+template <ElementwiseDivisable Container>
+constexpr inline void operator/=(Container &numerator, const typename Container::value_type &denominator) noexcept
+{
+    return transform(numerator, denominator, std::divides<typename Container::value_type>{});
 }
 
 template <ElementwiseEquatable Container>

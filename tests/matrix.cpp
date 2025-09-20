@@ -124,6 +124,42 @@ UTEST(matrix, scalar_plus_mat)
     ASSERT_EQ(expected, actual);
 }
 
+UTEST(matrix, mat_pluseq_mat)
+{
+    Mat2 l = {
+        {1, 2},
+        {3, 4},
+    };
+
+    const Mat2 r = {
+        {5, 6},
+        {7, 8},
+    };
+
+    l += r;
+    const Mat2 expected = {
+        {6, 8},
+        {10, 12},
+    };
+    ASSERT_EQ(expected, l);
+}
+
+UTEST(matrix, mat_pluseq_scalar)
+{
+    Mat2 l = {
+        {1, 2},
+        {3, 4},
+    };
+
+    const int scalar = 5;
+    l += scalar;
+    const Mat2 expected = {
+        {6, 7},
+        {8, 9},
+    };
+    ASSERT_EQ(expected, l);
+}
+
 UTEST(matrix, mat_minus_mat)
 {
     const Mat2 l = {
@@ -172,6 +208,39 @@ UTEST(matrix, scalar_minus_mat)
     ASSERT_EQ(expected, actual);
 }
 
+UTEST(matrix, mat_minuseq_mat)
+{
+    Mat2 l = {
+        {1, 2},
+        {3, 4},
+    };
+    const Mat2 r = {
+        {-1, 5},
+        {6, 7},
+    };
+    l -= r;
+    const Mat2 expected = {
+        {2, -3},
+        {-3, -3},
+    };
+    ASSERT_EQ(expected, l);
+}
+
+UTEST(matrix, mat_minuseq_scalar)
+{
+    Mat2 l = {
+        {1, 2},
+        {3, 6},
+    };
+    const int scalar = 5;
+    l -= scalar;
+    const Mat2 expected = {
+        {-4, -3},
+        {-2, 1},
+    };
+    ASSERT_EQ(expected, l);
+}
+
 UTEST(matrix, negate_mat)
 {
     const Mat2 m = {
@@ -216,6 +285,21 @@ UTEST(matrix, scalar_times_vec)
     ASSERT_EQ(expected, actual);
 }
 
+UTEST(matrix, mat_timeseq_scalar)
+{
+    Mat2 l = {
+        {1, 2},
+        {3, 4},
+    };
+    const int scalar = 5;
+    l *= scalar;
+    const Mat2 expected = {
+        {5, 10},
+        {15, 20},
+    };
+    ASSERT_EQ(expected, l);
+}
+
 UTEST(matrix, mat_diveded_by_scalar)
 {
     const Mat2 l = {
@@ -229,6 +313,21 @@ UTEST(matrix, mat_diveded_by_scalar)
         {-3, 4},
     };
     ASSERT_EQ(expected, actual);
+}
+
+UTEST(matrix, mat_divedeeq_by_scalar)
+{
+    Mat2 l = {
+        {5, 10},
+        {-15, 20},
+    };
+    const int scalar = 5;
+    l /= scalar;
+    const Mat2 expected = {
+        {1, 2},
+        {-3, 4},
+    };
+    ASSERT_EQ(expected, l);
 }
 
 UTEST(matrix, equal)

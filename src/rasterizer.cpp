@@ -133,19 +133,31 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
 
 /// ------------------------------------------ Public API ------------------------------------------
 
+void reset_depth_buffer(DepthBuffer &buffer) noexcept
+{
+    using namespace std;
+    fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
+}
+
 [[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height)
 {
     using namespace std;
     DepthBuffer buffer(width, height);
-    fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
+    reset_depth_buffer(buffer);
     return buffer;
+}
+
+void reset_index_buffer(IndexBuffer &buffer) noexcept
+{
+    using namespace std;
+    fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
 }
 
 [[nodiscard]] IndexBuffer create_index_buffer(size_t width, size_t height)
 {
     using namespace std;
     IndexBuffer buffer(width, height);
-    fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
+    reset_index_buffer(buffer);
     return buffer;
 }
 

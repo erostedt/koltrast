@@ -15,7 +15,10 @@ struct BoundingBox
 };
 
 [[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height);
+void reset_depth_buffer(DepthBuffer &buffer) noexcept;
+
 [[nodiscard]] IndexBuffer create_index_buffer(size_t width, size_t height);
+void reset_index_buffer(IndexBuffer &buffer) noexcept;
 
 void rasterize_triangles(const std::vector<Vector<f32, 4>> &screen_vertices, DepthBuffer &depth_buffer,
                          IndexBuffer &index_buffer) noexcept;

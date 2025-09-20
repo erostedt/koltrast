@@ -87,48 +87,46 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Triangle &
     f32 top = (f32)box.top_left.y() + 0.5f;
 
     f32 w = 1.0f / edge(t.p1, t.p2, t.p3);
-    f32 w0 = edge(t.p2, t.p3, {left, top, 0.0f});
-    f32 w1 = edge(t.p3, t.p1, {left, top, 0.0f});
-    f32 w2 = edge(t.p1, t.p2, {left, top, 0.0f});
 
-    f32 w0_dx = t.p3.y() - t.p2.y();
-    f32 w0_dy = t.p2.x() - t.p3.x();
+    Vector<f32, 3> weights = {
+        edge(t.p2, t.p3, {left, top, 0.0f}),
+        edge(t.p3, t.p1, {left, top, 0.0f}),
+        edge(t.p1, t.p2, {left, top, 0.0f}),
+    };
 
-    f32 w1_dx = t.p1.y() - t.p3.y();
-    f32 w1_dy = t.p3.x() - t.p1.x();
+    Vector<f32, 3> dx = {
+        t.p3.y() - t.p2.y(),
+        t.p1.y() - t.p3.y(),
+        t.p2.y() - t.p1.y(),
+    };
 
-    f32 w2_dx = t.p2.y() - t.p1.y();
-    f32 w2_dy = t.p1.x() - t.p2.x();
+    Vector<f32, 3> dy = {
+        t.p2.x() - t.p3.x(),
+        t.p3.x() - t.p1.x(),
+        t.p1.x() - t.p2.x(),
+    };
+
+    Vector<f32, 3> zs = {t.p1.z(), t.p2.z(), t.p3.z()};
 
     for (size_t y = box.top_left.y(); y < box.bottom_right.y(); ++y)
     {
-        f32 w0i = w0;
-        f32 w1i = w1;
-        f32 w2i = w2;
-
+        Vector<f32, 3> cw = weights;
         for (size_t x = box.top_left.x(); x < box.bottom_right.x(); ++x)
         {
-            if (w0i >= 0 && w1i >= 0 && w2i >= 0)
+            if (cw.x() >= 0 && cw.y() >= 0 && cw.z() >= 0)
             {
+                Vector<f32, 3> lambdas = cw * w;
 
-                f32 l0 = w0i * w;
-                f32 l1 = w1i * w;
-                f32 l2 = w2i * w;
-
-                f32 z = l0 * t.p1.z() + l1 * t.p2.z() + l2 * t.p3.z();
+                f32 z = lambdas.dot(zs);
                 if (z >= 0.0f && z <= 1.0f && z < depth_buffer[x, y])
                 {
                     depth_buffer[x, y] = z;
                     index_buffer[x, y] = triangle_index;
                 }
             }
-            w0i += w0_dx;
-            w1i += w1_dx;
-            w2i += w2_dx;
+            cw += dx;
         }
-        w0 += w0_dy;
-        w1 += w1_dy;
-        w2 += w2_dy;
+        weights += dy;
     }
 }
 

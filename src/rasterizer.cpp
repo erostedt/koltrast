@@ -24,23 +24,24 @@ using Vec2f = Vector<f32, 2>;
     return static_cast<size_t>(std::ceil(x));
 }
 
-[[nodiscard]] constexpr inline BoundingBox clamped_triangle_bounding_box(const Triangle &t,
+[[nodiscard]] constexpr inline BoundingBox clamped_triangle_bounding_box(const Vec4f &p1, const Vec4f &p2,
+                                                                         const Vec4f &p3,
                                                                          const BoundingBox &bounds) noexcept
 {
     CHECK(bounds.top_left.x() <= bounds.bottom_right.x());
     CHECK(bounds.top_left.y() <= bounds.bottom_right.y());
 
     using namespace std;
-    f32 left = min(min(t.p1.x(), t.p2.x()), t.p3.x());
+    f32 left = min(min(p1.x(), p2.x()), p3.x());
     size_t clamped_left = max(floor_to_size(max(left, 0.0f)), bounds.top_left.x());
 
-    f32 top = min(min(t.p1.y(), t.p2.y()), t.p3.y());
+    f32 top = min(min(p1.y(), p2.y()), p3.y());
     size_t clamped_top = max(floor_to_size(max(top, 0.0f)), bounds.top_left.y());
 
-    f32 right = max(max(t.p1.x(), t.p2.x()), t.p3.x());
+    f32 right = max(max(p1.x(), p2.x()), p3.x());
     size_t clamped_right = min(ceil_to_size(max(right, 0.0f)), bounds.bottom_right.x());
 
-    f32 bottom = max(max(t.p1.y(), t.p2.y()), t.p3.y());
+    f32 bottom = max(max(p1.y(), p2.y()), p3.y());
     size_t clamped_bottom = min(ceil_to_size(max(bottom, 0.0f)), bounds.bottom_right.y());
     return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
 }
@@ -50,22 +51,12 @@ using Vec2f = Vector<f32, 2>;
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }
 
-[[nodiscard]] constexpr inline f32 edge(Vec3f p1, Vec3f p2, Vec3f p3) noexcept
-{
-    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
-}
-
 [[nodiscard]] constexpr inline f32 edge(Vec2f p1, Vec2f p2, Vec2f p3) noexcept
 {
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }
 
-[[nodiscard]] constexpr inline f32 edge(const Triangle &t) noexcept
-{
-    return edge(t.p1, t.p2, t.p3);
-}
-
-[[nodiscard]] constexpr inline bool out_of_bounds(const Vec3f &point, const BoundingBox &bounds) noexcept
+[[nodiscard]] constexpr inline bool out_of_bounds(const Vec4f &point, const BoundingBox &bounds) noexcept
 {
     // TODO: CHECK IF CORRECT INEQUALITIES
     return point.x() < static_cast<f32>(bounds.top_left.x()) ||
@@ -74,11 +65,12 @@ using Vec2f = Vector<f32, 2>;
            point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
 }
 
-inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer,
-                               IndexBuffer &index_buffer) noexcept
+inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec4f &p2, const Vec4f &p3,
+                               DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     // Backface
-    if (edge(t) < 0.0f)
+    f32 area = edge(p1, p2, p3);
+    if (area < 0.0f)
     {
         std::cerr << "Backface" << std::endl;
         return;
@@ -86,41 +78,37 @@ inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBu
 
     BoundingBox bounds = {{0u, 0u}, {depth_buffer.width(), depth_buffer.height()}};
 
-    if (out_of_bounds(t.p1, bounds) && out_of_bounds(t.p2, bounds) && out_of_bounds(t.p3, bounds))
+    if (out_of_bounds(p1, bounds) && out_of_bounds(p2, bounds) && out_of_bounds(p3, bounds))
     {
-        std::cerr << "OOB" << std::endl;
-        std::cerr << "P1: (" << t.p1.x() << " " << t.p1.y() << " " << t.p1.z() << ")" << std::endl;
-        std::cerr << "P2: (" << t.p2.x() << " " << t.p2.y() << " " << t.p2.z() << ")" << std::endl;
-        std::cerr << "P3: (" << t.p3.x() << " " << t.p3.y() << " " << t.p3.z() << ")" << std::endl;
         return;
     }
 
-    BoundingBox box = clamped_triangle_bounding_box(t, bounds);
+    BoundingBox box = clamped_triangle_bounding_box(p1, p2, p3, bounds);
 
     f32 left = (f32)box.top_left.x() + 0.5f;
     f32 top = (f32)box.top_left.y() + 0.5f;
 
-    f32 w = 1.0f / edge(t.p1, t.p2, t.p3);
+    f32 w = 1.0f / area;
 
     Vector<f32, 3> weights = {
-        edge(t.p2, t.p3, {left, top, 0.0f}),
-        edge(t.p3, t.p1, {left, top, 0.0f}),
-        edge(t.p1, t.p2, {left, top, 0.0f}),
+        edge(p2, p3, {left, top, 0.0f, 0.0f}),
+        edge(p3, p1, {left, top, 0.0f, 0.0f}),
+        edge(p1, p2, {left, top, 0.0f, 0.0f}),
     };
 
     Vector<f32, 3> dx = {
-        t.p3.y() - t.p2.y(),
-        t.p1.y() - t.p3.y(),
-        t.p2.y() - t.p1.y(),
+        p3.y() - p2.y(),
+        p1.y() - p3.y(),
+        p2.y() - p1.y(),
     };
 
     Vector<f32, 3> dy = {
-        t.p2.x() - t.p3.x(),
-        t.p3.x() - t.p1.x(),
-        t.p1.x() - t.p2.x(),
+        p2.x() - p3.x(),
+        p3.x() - p1.x(),
+        p1.x() - p2.x(),
     };
 
-    Vector<f32, 3> zs = {t.p1.z(), t.p2.z(), t.p3.z()};
+    Vector<f32, 3> zs = {p1.z(), p2.z(), p3.z()};
 
     for (size_t y = box.top_left.y(); y < box.bottom_right.y(); ++y)
     {
@@ -162,12 +150,16 @@ inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBu
     return buffer;
 }
 
-void rasterize_triangles(const std::vector<Triangle> &screen_triangles, DepthBuffer &depth_buffer,
+void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer &depth_buffer,
                          IndexBuffer &index_buffer) noexcept
 {
-    for (size_t i = 0; i < screen_triangles.size(); ++i)
+    CHECK(screen_vertices.size() % 3 == 0);
+    for (size_t i = 0; i < screen_vertices.size(); i += 3)
     {
-        rasterize_triangle(i, screen_triangles[i], depth_buffer, index_buffer);
+        const auto v1 = screen_vertices[i + 0];
+        const auto v2 = screen_vertices[i + 1];
+        const auto v3 = screen_vertices[i + 2];
+        rasterize_triangle(i / 3, v1, v2, v3, depth_buffer, index_buffer);
     }
 }
 
@@ -177,17 +169,10 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
     for (size_t i = 0; i < faces.size(); ++i)
     {
         const auto &face = faces[i];
-
         const auto a = screen_vertices[face.vertex_indices[0]];
         const auto b = screen_vertices[face.vertex_indices[1]];
         const auto c = screen_vertices[face.vertex_indices[2]];
-
-        const Triangle tri = {
-            a.xyz(),
-            b.xyz(),
-            c.xyz(),
-        };
-        rasterize_triangle(i, tri, depth_buffer, index_buffer);
+        rasterize_triangle(i, a, b, c, depth_buffer, index_buffer);
     }
 }
 

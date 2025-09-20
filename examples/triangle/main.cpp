@@ -24,13 +24,10 @@ int main()
     std::vector<Vector<f32, 4>> screen_vertices;
     project_to_screen(vertices, mvp, camera.resolution, screen_vertices);
 
-    Triangle t1{screen_vertices[0].xyz(), screen_vertices[1].xyz(), screen_vertices[2].xyz()};
-    Triangle t2{screen_vertices[3].xyz(), screen_vertices[4].xyz(), screen_vertices[5].xyz()};
-
     ColorImage image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
-    rasterize_triangles({t1, t2}, depth_buffer, index_buffer);
+    rasterize_triangles(screen_vertices, depth_buffer, index_buffer);
     draw_triangles(image, {{255, 0, 0}, {0, 255, 0}}, index_buffer);
     dump_ppm(image, std::cout);
     return 0;

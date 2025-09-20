@@ -42,10 +42,16 @@ Image<RGB> load_texture(const fs::path &path)
     return texture;
 }
 
-int main()
+int main(int argc, char **argv)
 {
-    const auto mesh = load_obj("/home/eric/git/koltrast/bob/bob_tri.obj");
-    const auto texture = load_texture("/home/eric/git/koltrast/bob/bob_diffuse.png");
+    if (argc != 3)
+    {
+        std::cout << "./mesh obj_file texture_file > output.ppm";
+        return 1;
+    }
+
+    const auto mesh = load_obj(argv[1]);
+    const auto texture = load_texture(argv[2]);
     const auto colors = random_colors(mesh.faces.size());
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};

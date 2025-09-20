@@ -149,30 +149,36 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Triangle &
     return buffer;
 }
 
-void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &depth_buffer,
-                         IndexBuffer &index_buffer) noexcept
+void map_to_ndc(const std::vector<Vector<f32, 3>> &world_vertices, const Matrix<f32, 4, 4> &mvp,
+                const Resolution &resolution, std::vector<Vector<f32, 3>> &ndc_vertices)
 {
-    for (size_t i = 0; i < triangles.size(); ++i)
+    ndc_vertices.reserve(ndc_vertices.size() + world_vertices.size());
+    for (const auto &vertex : world_vertices)
     {
-        rasterize_triangle(i, triangles[i], depth_buffer, index_buffer);
+        ndc_vertices.push_back(project_to_screen(vertex, mvp, resolution));
     }
 }
 
-void rasterize_mesh(const Mesh &mesh, const Mat4x4f &model, const Mat4x4f &view, const Mat4x4f &projection,
-                    const Resolution &resolution, DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+void rasterize_triangles(const std::vector<Triangle> &ndc_triangles, DepthBuffer &depth_buffer,
+                         IndexBuffer &index_buffer) noexcept
 {
-    const auto &faces = mesh.faces;
-    const auto &vertices = mesh.vertices;
+    for (size_t i = 0; i < ndc_triangles.size(); ++i)
+    {
+        rasterize_triangle(i, ndc_triangles[i], depth_buffer, index_buffer);
+    }
+}
 
-    const auto mvp = projection * view * model;
+void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec3f> &ndc_vertices,
+                         DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+{
     for (size_t i = 0; i < faces.size(); ++i)
     {
         const auto &face = faces[i];
 
         const Triangle tri = {
-            project_to_screen(vertices[face.vertex_indices[0]], mvp, resolution),
-            project_to_screen(vertices[face.vertex_indices[1]], mvp, resolution),
-            project_to_screen(vertices[face.vertex_indices[2]], mvp, resolution),
+            ndc_vertices[face.vertex_indices[0]],
+            ndc_vertices[face.vertex_indices[1]],
+            ndc_vertices[face.vertex_indices[2]],
         };
         rasterize_triangle(i, tri, depth_buffer, index_buffer);
     }

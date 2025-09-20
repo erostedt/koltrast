@@ -30,11 +30,14 @@ int main()
     const auto model = Matrix<f32, 4, 4>::identity();
     const auto view = look_at(Vector<f32, 3>{0.0f, 0.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
+    const auto mvp = proj * view * model;
 
     ColorImage image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
-    rasterize_mesh(mesh, model, view, proj, camera.resolution, depth_buffer, index_buffer);
+    std::vector<Vector<f32, 3>> ndc_vertices;
+    map_to_ndc(mesh.vertices, mvp, camera.resolution, ndc_vertices);
+    rasterize_triangles(mesh.faces, ndc_vertices, depth_buffer, index_buffer);
     draw_triangles(image, colors, index_buffer);
     dump_ppm(image, std::cout);
 }

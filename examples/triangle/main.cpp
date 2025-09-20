@@ -9,14 +9,10 @@
 
 int main()
 {
-
-    const Vector<f32, 3> a{-1.0f, -1.0f, -1.0f};
-    const Vector<f32, 3> b{2.0f, -1.0f, -3.0f};
-    const Vector<f32, 3> c{0.0f, 1.0f, -2.0f};
-
-    const Vector<f32, 3> d{1.0f, -1.0f, -1.0f};
-    const Vector<f32, 3> e{0.0f, 1.0f, -2.0f};
-    const Vector<f32, 3> f{-2.0f, -1.0f, -3.0f};
+    const std::vector<Vector<f32, 3>> vertices = {
+        {-1.0f, -1.0f, -1.0f}, {2.0f, -1.0f, -3.0f}, {0.0f, 1.0f, -2.0f},
+        {1.0f, -1.0f, -1.0f},  {0.0f, 1.0f, -2.0f},  {-2.0f, -1.0f, -3.0f},
+    };
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
     const auto model = Matrix<f32, 4, 4>::identity();
@@ -24,16 +20,11 @@ int main()
     const auto proj = projection_matrix(camera);
     const auto mvp = proj * view * model;
 
-    const auto as = project_to_screen(a, mvp, camera.resolution);
-    const auto bs = project_to_screen(b, mvp, camera.resolution);
-    const auto cs = project_to_screen(c, mvp, camera.resolution);
+    std::vector<Vector<f32, 3>> ndc_vertices;
+    map_to_ndc(vertices, mvp, camera.resolution, ndc_vertices);
 
-    const auto ds = project_to_screen(d, mvp, camera.resolution);
-    const auto es = project_to_screen(e, mvp, camera.resolution);
-    const auto fs = project_to_screen(f, mvp, camera.resolution);
-
-    Triangle t1{as, bs, cs};
-    Triangle t2{ds, es, fs};
+    Triangle t1{ndc_vertices[0], ndc_vertices[1], ndc_vertices[2]};
+    Triangle t2{ndc_vertices[3], ndc_vertices[4], ndc_vertices[5]};
 
     ColorImage image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);

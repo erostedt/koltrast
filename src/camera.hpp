@@ -122,12 +122,10 @@ template <std::floating_point T>
 }
 
 template <std::floating_point T>
-Vector<T, 3> project_to_screen(const Vector<T, 3> &world_point, const Matrix<T, 4, 4> &view,
-                               const Matrix<T, 4, 4> &proj, const Resolution &res)
+Vector<T, 3> project_to_screen(const Vector<T, 3> &world_point, const Matrix<T, 4, 4> &mvp, const Resolution &res)
 {
     const Vector<T, 4> world_point_homo = {world_point.x(), world_point.y(), world_point.z(), T{1}};
-    const auto camera_point_homo = view * world_point_homo;
-    const Vector<T, 4> clip = proj * camera_point_homo;
+    const auto clip = mvp * world_point_homo;
     CHECK(std::abs(clip.w()) > T{1e-6f});
     const Vector<T, 3> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
     const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(res.width);

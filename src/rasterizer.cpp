@@ -8,6 +8,7 @@
 #include "rasterizer.hpp"
 #include "types.hpp"
 
+using Mat4x4f = Matrix<f32, 4, 4>;
 using Vec3f = Vector<f32, 3>;
 
 [[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
@@ -154,6 +155,26 @@ void rasterize_triangles(const std::vector<Triangle> &triangles, DepthBuffer &de
     for (size_t i = 0; i < triangles.size(); ++i)
     {
         rasterize_triangle(i, triangles[i], depth_buffer, index_buffer);
+    }
+}
+
+void rasterize_mesh(const Mesh &mesh, const Mat4x4f &model, const Mat4x4f &view, const Mat4x4f &projection,
+                    const Resolution &resolution, DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+{
+    const auto &faces = mesh.faces;
+    const auto &vertices = mesh.vertices;
+
+    const auto mvp = projection * view * model;
+    for (size_t i = 0; i < faces.size(); ++i)
+    {
+        const auto &face = faces[i];
+
+        const Triangle tri = {
+            project_to_screen(vertices[face.vertex_indices[0]], mvp, resolution),
+            project_to_screen(vertices[face.vertex_indices[1]], mvp, resolution),
+            project_to_screen(vertices[face.vertex_indices[2]], mvp, resolution),
+        };
+        rasterize_triangle(i, tri, depth_buffer, index_buffer);
     }
 }
 

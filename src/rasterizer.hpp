@@ -24,13 +24,14 @@ struct BoundingBox
 [[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height);
 [[nodiscard]] IndexBuffer create_index_buffer(size_t width, size_t height);
 
-void map_to_ndc(const std::vector<Vector<f32, 3>> &world_vertices, const Matrix<f32, 4, 4> &mvp,
-                const Resolution &resolution, std::vector<Vector<f32, 3>> &ndc_vertices);
-
-void rasterize_triangles(const std::vector<Triangle> &ndc_triangles, DepthBuffer &depth_buffer,
+void rasterize_triangles(const std::vector<Triangle> &screen_triangles, DepthBuffer &depth_buffer,
                          IndexBuffer &index_buffer) noexcept;
-void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vector<f32, 3>> &ndc_vertices,
+void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vector<f32, 4>> &screen_vertices,
                          DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept;
 
 void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const IndexBuffer &index_buffer) noexcept;
+void draw_triangles(ColorImage &image, const std::vector<Face> &faces,
+                    const std::vector<Vector<f32, 4>> &screen_vertices,
+                    const std::vector<Vector<f32, 2>> &texture_coordinates, const Image<RGB> &texture,
+                    const IndexBuffer &index_buffer) noexcept;
 void dump_ppm(const ColorImage &image, std::ostream &stream);

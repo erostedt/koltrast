@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <ostream>
 
 #include "camera.hpp"
 #include "matrix.hpp"
@@ -9,7 +10,9 @@
 #include "types.hpp"
 
 using Mat4x4f = Matrix<f32, 4, 4>;
+using Vec4f = Vector<f32, 4>;
 using Vec3f = Vector<f32, 3>;
+using Vec2f = Vector<f32, 2>;
 
 [[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
 {
@@ -42,7 +45,17 @@ using Vec3f = Vector<f32, 3>;
     return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
 }
 
+[[nodiscard]] constexpr inline f32 edge(Vec4f p1, Vec4f p2, Vec4f p3) noexcept
+{
+    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
+}
+
 [[nodiscard]] constexpr inline f32 edge(Vec3f p1, Vec3f p2, Vec3f p3) noexcept
+{
+    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
+}
+
+[[nodiscard]] constexpr inline f32 edge(Vec2f p1, Vec2f p2, Vec2f p3) noexcept
 {
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }
@@ -61,8 +74,8 @@ using Vec3f = Vector<f32, 3>;
            point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
 }
 
-constexpr inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer,
-                                         IndexBuffer &index_buffer) noexcept
+inline void rasterize_triangle(size_t triangle_index, const Triangle &t, DepthBuffer &depth_buffer,
+                               IndexBuffer &index_buffer) noexcept
 {
     // Backface
     if (edge(t) < 0.0f)
@@ -149,36 +162,30 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Triangle &
     return buffer;
 }
 
-void map_to_ndc(const std::vector<Vector<f32, 3>> &world_vertices, const Matrix<f32, 4, 4> &mvp,
-                const Resolution &resolution, std::vector<Vector<f32, 3>> &ndc_vertices)
-{
-    ndc_vertices.reserve(ndc_vertices.size() + world_vertices.size());
-    for (const auto &vertex : world_vertices)
-    {
-        ndc_vertices.push_back(project_to_screen(vertex, mvp, resolution));
-    }
-}
-
-void rasterize_triangles(const std::vector<Triangle> &ndc_triangles, DepthBuffer &depth_buffer,
+void rasterize_triangles(const std::vector<Triangle> &screen_triangles, DepthBuffer &depth_buffer,
                          IndexBuffer &index_buffer) noexcept
 {
-    for (size_t i = 0; i < ndc_triangles.size(); ++i)
+    for (size_t i = 0; i < screen_triangles.size(); ++i)
     {
-        rasterize_triangle(i, ndc_triangles[i], depth_buffer, index_buffer);
+        rasterize_triangle(i, screen_triangles[i], depth_buffer, index_buffer);
     }
 }
 
-void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec3f> &ndc_vertices,
+void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
                          DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     for (size_t i = 0; i < faces.size(); ++i)
     {
         const auto &face = faces[i];
 
+        const auto a = screen_vertices[face.vertex_indices[0]];
+        const auto b = screen_vertices[face.vertex_indices[1]];
+        const auto c = screen_vertices[face.vertex_indices[2]];
+
         const Triangle tri = {
-            ndc_vertices[face.vertex_indices[0]],
-            ndc_vertices[face.vertex_indices[1]],
-            ndc_vertices[face.vertex_indices[2]],
+            a.xyz(),
+            b.xyz(),
+            c.xyz(),
         };
         rasterize_triangle(i, tri, depth_buffer, index_buffer);
     }
@@ -194,6 +201,69 @@ void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const Ind
             if (index != std::numeric_limits<size_t>::max())
             {
                 image[x, y] = colors[index];
+            }
+        }
+    }
+}
+
+inline RGB sample_texture_nearest_neighbor(const Image<RGB> &texture, size_t x, size_t y, const Vec4f &v1,
+                                           const Vec4f &v2, const Vec4f &v3, const Vec2f &uv1, const Vec2f &uv2,
+                                           const Vec2f &uv3)
+{
+    Vec2f pixel_center = {static_cast<f32>(x) + 0.5f, static_cast<f32>(y) + 0.5f};
+    Vec2f sv1 = {v1.x(), v1.y()};
+    Vec2f sv2 = {v2.x(), v2.y()};
+    Vec2f sv3 = {v3.x(), v3.y()};
+
+    f32 w = 1.0f / edge(sv1, sv2, sv3);
+
+    f32 ba = edge(sv2, sv3, pixel_center) * w;
+    f32 bb = edge(sv3, sv1, pixel_center) * w;
+    f32 bc = 1.0f - ba - bb;
+
+    f32 wa = v1.w();
+    f32 wb = v2.w();
+    f32 wc = v3.w();
+
+    f32 iwa = 1.0f / wa;
+    f32 iwb = 1.0f / wb;
+    f32 iwc = 1.0f / wc;
+
+    Vec2f uv1i = uv1 * iwa;
+    Vec2f uv2i = uv2 * iwb;
+    Vec2f uv3i = uv3 * iwc;
+
+    Vec2f uv_interp = ba * uv1i + bb * uv2i + bc * uv3i;
+    f32 invw_interp = ba * iwa + bb * iwb + bc * iwc;
+
+    Vec2f uv = uv_interp / invw_interp;
+
+    // Nearest neighbor
+    size_t tx = floor_to_size(std::clamp(uv.x(), 0.0f, 0.999999f) * (f32)texture.width());
+    size_t ty = floor_to_size(std::clamp(uv.y(), 0.0f, 0.999999f) * (f32)texture.height());
+    return texture[tx, ty];
+}
+
+void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
+                    const std::vector<Vec2f> &texture_coordinates, const Image<RGB> &texture,
+                    const IndexBuffer &index_buffer) noexcept
+{
+    for (size_t y = 0; y < index_buffer.height(); ++y)
+    {
+        for (size_t x = 0; x < index_buffer.width(); ++x)
+        {
+            size_t index = index_buffer[x, y];
+            if (index != std::numeric_limits<size_t>::max())
+            {
+                const auto &face = faces[index];
+                const auto v1 = screen_vertices[face.vertex_indices[0]];
+                const auto v2 = screen_vertices[face.vertex_indices[1]];
+                const auto v3 = screen_vertices[face.vertex_indices[2]];
+
+                const auto uv1 = texture_coordinates[face.texture_indices[0]];
+                const auto uv2 = texture_coordinates[face.texture_indices[1]];
+                const auto uv3 = texture_coordinates[face.texture_indices[2]];
+                image[x, y] = sample_texture_nearest_neighbor(texture, x, y, v1, v2, v3, uv1, uv2, uv3);
             }
         }
     }

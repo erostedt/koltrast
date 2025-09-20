@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "camera.hpp"
 #include "matrix.hpp"
 #include "rasterizer.hpp"
 #include "transform.hpp"
@@ -20,11 +21,11 @@ int main()
     const auto proj = projection_matrix(camera);
     const auto mvp = proj * view * model;
 
-    std::vector<Vector<f32, 3>> ndc_vertices;
-    map_to_ndc(vertices, mvp, camera.resolution, ndc_vertices);
+    std::vector<Vector<f32, 4>> screen_vertices;
+    project_to_screen(vertices, mvp, camera.resolution, screen_vertices);
 
-    Triangle t1{ndc_vertices[0], ndc_vertices[1], ndc_vertices[2]};
-    Triangle t2{ndc_vertices[3], ndc_vertices[4], ndc_vertices[5]};
+    Triangle t1{screen_vertices[0].xyz(), screen_vertices[1].xyz(), screen_vertices[2].xyz()};
+    Triangle t2{screen_vertices[3].xyz(), screen_vertices[4].xyz(), screen_vertices[5].xyz()};
 
     ColorImage image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);

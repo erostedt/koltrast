@@ -585,6 +585,12 @@ template <typename T, size_t Rows> class Vector : public Array<T, Rows>
         return elements[3];
     }
 
+    [[nodiscard]] constexpr inline Vector<T, 3> xyz() const noexcept
+        requires(Rows == 4)
+    {
+        return {x(), y(), z()};
+    }
+
     [[nodiscard]] constexpr inline Vector cross(const Vector &v) const noexcept
         requires(Rows == 3) && Multiplicable<T> && Subtractable<T>
     {

@@ -14,10 +14,10 @@ set(SRC_PATH src)
 set(THIRD_PARTY third_party)
 
 include_directories(${SRC_PATH})
-include_directories(${THIRD_PARTY})
 file(GLOB source_files ${SRC_PATH}/*.cpp)
 
 add_library(${LIB_NAME} ${source_files})
+target_include_directories(${LIB_NAME} SYSTEM PUBLIC ${THIRD_PARTY})
 
 add_subdirectory(tests)
 add_subdirectory(examples)

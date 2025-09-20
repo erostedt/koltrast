@@ -89,7 +89,7 @@ template <typename T>
 concept ElementwiseEquatable = ElementwiseOperable<T> && std::equality_comparable<typename T::value_type>;
 
 template <ElementwiseOperable Container, typename UnaryOperation>
-constexpr Container Elementwise(const Container &left, UnaryOperation op)
+constexpr Container map(const Container &left, UnaryOperation op)
 {
     using namespace std;
     Container out;
@@ -98,7 +98,7 @@ constexpr Container Elementwise(const Container &left, UnaryOperation op)
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container Elementwise(const Container &left, const Container &right, BinaryOperation op)
+constexpr Container map(const Container &left, const Container &right, BinaryOperation op)
 {
     using namespace std;
     Container out;
@@ -107,7 +107,7 @@ constexpr Container Elementwise(const Container &left, const Container &right, B
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container Elementwise(const Container &left, const typename Container::value_type &right, BinaryOperation op)
+constexpr Container map(const Container &left, const typename Container::value_type &right, BinaryOperation op)
 {
     using namespace std;
     using T = typename Container::value_type;
@@ -117,7 +117,7 @@ constexpr Container Elementwise(const Container &left, const typename Container:
 }
 
 template <ElementwiseOperable Container, typename BinaryOperation>
-constexpr Container Elementwise(const typename Container::value_type &left, const Container &right, BinaryOperation op)
+constexpr Container map(const typename Container::value_type &left, const Container &right, BinaryOperation op)
 {
     using namespace std;
     using T = typename Container::value_type;
@@ -129,41 +129,41 @@ constexpr Container Elementwise(const typename Container::value_type &left, cons
 template <ElementwiseAddable Container>
 [[nodiscard]] constexpr inline Container operator+(const Container &left, const Container &right) noexcept
 {
-    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+    return map(left, right, std::plus<typename Container::value_type>{});
 }
 
 template <ElementwiseAddable Container>
 [[nodiscard]] constexpr inline Container operator+(const Container &left,
                                                    const typename Container::value_type &right) noexcept
 {
-    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+    return map(left, right, std::plus<typename Container::value_type>{});
 }
 
 template <ElementwiseAddable Container>
 [[nodiscard]] constexpr inline Container operator+(const typename Container::value_type &left,
                                                    const Container &right) noexcept
 {
-    return Elementwise(left, right, std::plus<typename Container::value_type>{});
+    return map(left, right, std::plus<typename Container::value_type>{});
 }
 
 template <ElementwiseSubtractable Container>
 [[nodiscard]] constexpr inline Container operator-(const Container &left, const Container &right) noexcept
 {
-    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+    return map(left, right, std::minus<typename Container::value_type>{});
 }
 
 template <ElementwiseSubtractable Container>
 [[nodiscard]] constexpr inline Container operator-(const Container &left,
                                                    const typename Container::value_type &right) noexcept
 {
-    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+    return map(left, right, std::minus<typename Container::value_type>{});
 }
 
 template <ElementwiseSubtractable Container>
 [[nodiscard]] constexpr inline Container operator-(const typename Container::value_type &left,
                                                    const Container &right) noexcept
 {
-    return Elementwise(left, right, std::minus<typename Container::value_type>{});
+    return map(left, right, std::minus<typename Container::value_type>{});
 }
 
 template <ElementwiseNegatable Container>
@@ -179,21 +179,21 @@ template <ElementwiseMultiplicable Container>
 [[nodiscard]] constexpr inline Container operator*(const Container &left,
                                                    const typename Container::value_type &right) noexcept
 {
-    return Elementwise(left, right, std::multiplies<typename Container::value_type>{});
+    return map(left, right, std::multiplies<typename Container::value_type>{});
 }
 
 template <ElementwiseMultiplicable Container>
 [[nodiscard]] constexpr inline Container operator*(const typename Container::value_type &left,
                                                    const Container &right) noexcept
 {
-    return Elementwise(left, right, std::multiplies<typename Container::value_type>{});
+    return map(left, right, std::multiplies<typename Container::value_type>{});
 }
 
 template <ElementwiseDivisable Container>
 [[nodiscard]] constexpr inline Container operator/(const Container &numerator,
                                                    const typename Container::value_type &denominator) noexcept
 {
-    return Elementwise(numerator, denominator, std::divides<typename Container::value_type>{});
+    return map(numerator, denominator, std::divides<typename Container::value_type>{});
 }
 
 template <ElementwiseEquatable Container>

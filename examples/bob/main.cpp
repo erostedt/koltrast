@@ -27,8 +27,8 @@ int main()
     const auto colors = random_colors(mesh.faces.size());
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
-    const auto model = Matrix<f32, 4, 4>::identity();
-    const auto view = look_at(Vector<f32, 3>{0.0f, 0.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
+    const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
+    const auto view = look_at<f32>({0.0f, 0.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
     const auto mvp = proj * view * model;
 

@@ -16,7 +16,7 @@
 #define CHECK(Expr) _check(#Expr, Expr, __FILE__, __LINE__, "")
 #define CHECK_Msg(Expr, Msg) _check(#Expr, Expr, __FILE__, __LINE__, Msg)
 
-inline void _check(const char *expr_str, bool expr, const char *file, int line, const char *msg)
+constexpr inline void _check(const char *expr_str, bool expr, const char *file, int line, const char *msg)
 {
     if (!expr)
     {
@@ -40,6 +40,11 @@ concept SelfAddable = requires(T x) {
 template <typename T>
 concept Subtractable = requires(T x) {
     { x - x } -> std::same_as<T>;
+};
+
+template <typename T>
+concept SelfSubtractable = requires(T x) {
+    { x -= x } -> std::same_as<T>;
 };
 
 template <typename T>

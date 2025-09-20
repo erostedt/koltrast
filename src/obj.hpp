@@ -5,9 +5,6 @@
 #include "matrix.hpp"
 #include "types.hpp"
 
-using Vec3f = Vector<f32, 3>;
-using Vec2f = Vector<f32, 2>;
-
 struct Face
 {
     const static size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
@@ -17,6 +14,8 @@ struct Face
 };
 struct Mesh
 {
+    using Vec3f = Vector<f32, 3>;
+    using Vec2f = Vector<f32, 2>;
     std::vector<Vec3f> vertices{};
     std::vector<Vec2f> texture_coordinates{};
     std::vector<Vec3f> normals{};

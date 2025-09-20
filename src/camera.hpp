@@ -5,6 +5,7 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <numbers>
 #include <vector>
 
 struct RGB

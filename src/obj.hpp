@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 
 #include "matrix.hpp"
 #include "types.hpp"

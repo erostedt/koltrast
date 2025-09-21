@@ -16,17 +16,6 @@
 
 namespace fs = std::filesystem;
 
-std::vector<RGB<u8>> random_colors(size_t n)
-{
-    std::vector<RGB<u8>> colors;
-    colors.reserve(n);
-    for (size_t i = 0; i < n; ++i)
-    {
-        colors.push_back({static_cast<u8>(rand() % 256), static_cast<u8>(rand() % 256), static_cast<u8>(rand() % 256)});
-    }
-    return colors;
-}
-
 Image<RGB<f32>> load_texture(const fs::path &path)
 {
     CHECK(fs::exists(path));
@@ -59,7 +48,6 @@ int main(int argc, char **argv)
 
     const auto mesh = load_obj(argv[1]);
     const auto texture = load_texture(argv[2]);
-    const auto colors = random_colors(mesh.faces.size());
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
     const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {1.0f, 1.0f, 1.0f});

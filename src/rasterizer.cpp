@@ -202,6 +202,30 @@ void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const
     }
 }
 
+inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &texture)
+{
+    f32 x = std::clamp(uv.x() * (f32)(texture.width() - 1), 0.0f, (f32)(texture.width() - 1));
+    f32 y = std::clamp(uv.y() * (f32)(texture.height() - 1), 0.0f, (f32)(texture.height() - 1));
+
+    size_t fx = floor_to_size(x);
+    size_t cx = ceil_to_size(x);
+    size_t fy = floor_to_size(y);
+    size_t cy = ceil_to_size(y);
+
+    RGB<f32> a = texture[fx, fy];
+    RGB<f32> b = texture[cx, fy];
+    RGB<f32> c = texture[fx, cy];
+    RGB<f32> d = texture[cx, cy];
+
+    f32 s = x - (f32)fx;
+    f32 t = y - (f32)fy;
+
+    f32 red = (1.0f - s) * (1.0f - t) * a.r + s * (1.0f - t) * b.r + (1.0f - s) * t * c.r + s * t * d.r;
+    f32 green = (1.0f - s) * (1.0f - t) * a.g + s * (1.0f - t) * b.g + (1.0f - s) * t * c.g + s * t * d.g;
+    f32 blue = (1.0f - s) * (1.0f - t) * a.b + s * (1.0f - t) * b.b + (1.0f - s) * t * c.b + s * t * d.b;
+    return {red, green, blue};
+}
+
 inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture &texture)
 {
     size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
@@ -261,7 +285,8 @@ void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std
                 const auto uv3 = texture_coordinates[face.texture_indices[2]];
                 const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
                 const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
-                image[x, y] = convert(sample_nearest_neighbor(uv, texture));
+                // image[x, y] = convert(sample_nearest_neighbor(uv, texture));
+                image[x, y] = convert(sample_bilinear(uv, texture));
             }
         }
     }

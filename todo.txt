@@ -1,4 +1,3 @@
-Bilinear interpolation
 Phong
 AA
 Multithreading

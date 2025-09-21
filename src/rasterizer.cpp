@@ -202,19 +202,24 @@ void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const Ind
     }
 }
 
-inline RGB sample_texture_nearest_neighbor(const Image<RGB> &texture, size_t x, size_t y, const Vec4f &v1,
-                                           const Vec4f &v2, const Vec4f &v3, const Vec2f &uv1, const Vec2f &uv2,
-                                           const Vec2f &uv3)
+inline RGB sample_nearest_neighbor(const Vec2f &uv, const Image<RGB> &texture)
 {
-    Vec2f pixel_center = {static_cast<f32>(x) + 0.5f, static_cast<f32>(y) + 0.5f};
+    size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
+    size_t ty = floor_to_size(uv.y() * (f32)(texture.height() - 1));
+    return texture[tx, ty];
+}
+
+inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3, const Vec2f &uv1,
+                            const Vec2f &uv2, const Vec2f &uv3) noexcept
+{
     Vec2f sv1 = {v1.x(), v1.y()};
     Vec2f sv2 = {v2.x(), v2.y()};
     Vec2f sv3 = {v3.x(), v3.y()};
 
     f32 w = 1.0f / edge(sv1, sv2, sv3);
 
-    f32 ba = edge(sv2, sv3, pixel_center) * w;
-    f32 bb = edge(sv3, sv1, pixel_center) * w;
+    f32 ba = edge(sv2, sv3, at) * w;
+    f32 bb = edge(sv3, sv1, at) * w;
     f32 bc = 1.0f - ba - bb;
 
     f32 wa = v1.w();
@@ -232,12 +237,7 @@ inline RGB sample_texture_nearest_neighbor(const Image<RGB> &texture, size_t x, 
     Vec2f uv_interp = ba * uv1i + bb * uv2i + bc * uv3i;
     f32 invw_interp = ba * iwa + bb * iwb + bc * iwc;
 
-    Vec2f uv = uv_interp / invw_interp;
-
-    // Nearest neighbor
-    size_t tx = floor_to_size(std::clamp(uv.x(), 0.0f, 0.999999f) * (f32)texture.width());
-    size_t ty = floor_to_size(std::clamp(uv.y(), 0.0f, 0.999999f) * (f32)texture.height());
-    return texture[tx, ty];
+    return uv_interp / invw_interp;
 }
 
 void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
@@ -259,7 +259,9 @@ void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std
                 const auto uv1 = texture_coordinates[face.texture_indices[0]];
                 const auto uv2 = texture_coordinates[face.texture_indices[1]];
                 const auto uv3 = texture_coordinates[face.texture_indices[2]];
-                image[x, y] = sample_texture_nearest_neighbor(texture, x, y, v1, v2, v3, uv1, uv2, uv3);
+                const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
+                const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
+                image[x, y] = sample_nearest_neighbor(uv, texture);
             }
         }
     }

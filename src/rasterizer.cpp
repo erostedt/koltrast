@@ -187,7 +187,7 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
     }
 }
 
-void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const IndexBuffer &index_buffer) noexcept
+void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept
 {
     for (size_t y = 0; y < index_buffer.height(); ++y)
     {
@@ -202,7 +202,7 @@ void draw_triangles(ColorImage &image, const std::vector<RGB> &colors, const Ind
     }
 }
 
-inline RGB sample_nearest_neighbor(const Vec2f &uv, const Image<RGB> &texture)
+inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture &texture)
 {
     size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
     size_t ty = floor_to_size(uv.y() * (f32)(texture.height() - 1));
@@ -241,7 +241,7 @@ inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, c
 }
 
 void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
-                    const std::vector<Vec2f> &texture_coordinates, const Image<RGB> &texture,
+                    const std::vector<Vec2f> &texture_coordinates, const Texture &texture,
                     const IndexBuffer &index_buffer) noexcept
 {
     for (size_t y = 0; y < index_buffer.height(); ++y)
@@ -261,7 +261,7 @@ void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std
                 const auto uv3 = texture_coordinates[face.texture_indices[2]];
                 const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
                 const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
-                image[x, y] = sample_nearest_neighbor(uv, texture);
+                image[x, y] = convert(sample_nearest_neighbor(uv, texture));
             }
         }
     }

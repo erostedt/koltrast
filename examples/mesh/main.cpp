@@ -16,9 +16,9 @@
 
 namespace fs = std::filesystem;
 
-std::vector<RGB> random_colors(size_t n)
+std::vector<RGB<u8>> random_colors(size_t n)
 {
-    std::vector<RGB> colors;
+    std::vector<RGB<u8>> colors;
     colors.reserve(n);
     for (size_t i = 0; i < n; ++i)
     {
@@ -27,17 +27,24 @@ std::vector<RGB> random_colors(size_t n)
     return colors;
 }
 
-Image<RGB> load_texture(const fs::path &path)
+Image<RGB<f32>> load_texture(const fs::path &path)
 {
     CHECK(fs::exists(path));
     stbi_set_flip_vertically_on_load(1);
     int w, h, c;
-    RGB *data = (RGB *)stbi_load(path.c_str(), &w, &h, &c, STBI_rgb);
+    u8 *data = stbi_load(path.c_str(), &w, &h, &c, STBI_rgb);
     CHECK(data != NULL);
-    Image<RGB> texture(static_cast<size_t>(w), static_cast<size_t>(h));
+    CHECK(c == 3);
+    Image<RGB<f32>> texture(static_cast<size_t>(w), static_cast<size_t>(h));
 
-    using namespace std;
-    copy_n(data, w * h, begin(texture));
+    size_t size = (size_t)w * (size_t)h;
+    for (size_t i = 0; i < size; ++i)
+    {
+        auto &e = texture[i];
+        e.r = (f32)data[3 * i + 0] / 255.0f;
+        e.g = (f32)data[3 * i + 1] / 255.0f;
+        e.b = (f32)data[3 * i + 2] / 255.0f;
+    }
     free(data);
     return texture;
 }

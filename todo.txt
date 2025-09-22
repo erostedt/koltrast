@@ -1,5 +1,4 @@
 Phong
 AA
-X11 live demo
 Simd?
 

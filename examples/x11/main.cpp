@@ -10,9 +10,11 @@
 #include "check.hpp"
 #include "counting_iterator.hpp"
 #include "light.hpp"
+#include "math.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
+#include "renderer.hpp"
 #include "texture.hpp"
 #include "transform.hpp"
 #include "types.hpp"
@@ -43,11 +45,6 @@ class PrintFps
   private:
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> ns;
 };
-
-[[nodiscard]] constexpr inline f32 edge(Vec4f p1, Vec4f p2, Vec4f p3) noexcept
-{
-    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
-}
 
 void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::vector<Face> &faces,
                     const std::vector<Vec4f> &screen_vertices, const std::vector<Vec4f> &world_vertices,
@@ -83,13 +80,13 @@ void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::
 
             const Vec4f p = {(f32)x + 0.5f, (f32)y + 0.5f, 0.0f, 0.0f};
 
-            f32 area = edge(sv1, sv2, sv3);
+            f32 area = edge_function(sv1, sv2, sv3);
             f32 w = 1.0f / area;
 
             Vector<f32, 3> weights = {
-                w * edge(sv2, sv3, p),
-                w * edge(sv3, sv1, p),
-                w * edge(sv1, sv2, p),
+                w * edge_function(sv2, sv3, p),
+                w * edge_function(sv3, sv1, p),
+                w * edge_function(sv1, sv2, p),
             };
 
             const auto world_position = (weights.x() * wv1 + weights.y() * wv2 + weights.z() * wv3).xyz();
@@ -156,7 +153,7 @@ int main(int argc, char **argv)
 
         project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
-        draw_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
+        render_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
         apply_lighting(image, camera_position, mesh.faces, screen_vertices, world_vertices, world_normals,
                        index_buffer);
 

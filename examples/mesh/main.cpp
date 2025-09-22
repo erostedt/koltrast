@@ -8,6 +8,7 @@
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
+#include "renderer.hpp"
 #include "texture.hpp"
 #include "transform.hpp"
 #include "types.hpp"
@@ -40,7 +41,7 @@ int main(int argc, char **argv)
     std::vector<Vector<f32, 4>> screen_vertices;
     project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
     rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
-    draw_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
+    render_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
 
     dump_ppm(image, std::cout);
 }

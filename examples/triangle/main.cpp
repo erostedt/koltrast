@@ -5,6 +5,7 @@
 #include "camera.hpp"
 #include "matrix.hpp"
 #include "rasterizer.hpp"
+#include "renderer.hpp"
 #include "transform.hpp"
 #include "types.hpp"
 
@@ -32,7 +33,7 @@ int main()
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
     rasterize_triangles(screen_vertices, depth_buffer, index_buffer);
-    draw_triangles(image, {{1.0f, 0, 0}, {0, 1.0f, 0}}, index_buffer);
+    render_triangles(image, {{1.0f, 0, 0}, {0, 1.0f, 0}}, index_buffer);
     dump_ppm(image, std::cout);
     return 0;
 }

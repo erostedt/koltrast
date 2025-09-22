@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cmath>
+#include <execution>
 #include <iostream>
 #include <limits>
 #include <ostream>
+#include <vector>
 
 #include "camera.hpp"
 #include "matrix.hpp"
@@ -236,7 +238,28 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
 {
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());
-    _rasterize_triangles(faces, screen_vertices, bounding_box(depth_buffer), depth_buffer, index_buffer);
+
+    using namespace std;
+    std::vector<BoundingBox<f32>> grid;
+    const size_t ix = 4;
+    const size_t iy = 4;
+    grid.reserve(ix * iy);
+
+    for (size_t y = 0; y < iy; ++y)
+    {
+        for (size_t x = 0; x < ix; ++x)
+        {
+            f32 sx = (f32)x * (f32)depth_buffer.width() / (f32)ix;
+            f32 sy = (f32)y * (f32)depth_buffer.height() / (f32)iy;
+            f32 ex = (f32)(x + 1) * (f32)depth_buffer.width() / (f32)ix;
+            f32 ey = (f32)(y + 1) * (f32)depth_buffer.height() / (f32)iy;
+            grid.push_back({{sx, sy}, {ex, ey}});
+        }
+    }
+
+    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<f32> &bounds) {
+        _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);
+    });
 }
 
 void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept

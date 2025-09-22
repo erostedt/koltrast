@@ -57,11 +57,13 @@ void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::
                     const std::vector<Vec4f> &screen_vertices, const std::vector<Vec4f> &world_vertices,
                     const std::vector<Vec3f> &world_normals, const IndexBuffer &index_buffer)
 {
-    Vec3f light_position = {1.0f, 0.0f, 0.0f};
-    RGB<f32> light_color = {0.0f, 1.0f, 0.0f};
+    PointLight point_light{
+        .position = {1.0f, 0.0f, 0.0f},
+        .color = {0.0f, 1.0f, 0.0f},
+        .specular = 0.5f,
+    };
 
     f32 ambient = 0.1f;
-    f32 specular = 0.5f;
     f32 shininess = 8.0f;
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
@@ -97,8 +99,7 @@ void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::
             const auto world_position = (weights.x() * wv1 + weights.y() * wv2 + weights.z() * wv3).xyz();
             const auto world_normal = (weights.x() * wn1 + weights.y() * wn2 + weights.z() * wn3);
 
-            const RGB<f32> light = point_light(world_position, world_normal, light_position, camera_position,
-                                               light_color, specular, shininess);
+            const RGB<f32> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
 
             const RGB<f32> object_color = image[x, y];
             image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,

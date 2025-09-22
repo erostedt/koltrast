@@ -368,8 +368,6 @@ void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std
             const auto uv3 = texture_coordinates[face.texture_indices[2]];
             const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
             const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
-            // image[x, y] = convert(sample_nearest_neighbor(uv, texture));
-
             image[x, y] = sample_bilinear(uv, texture);
         }
     });

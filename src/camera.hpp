@@ -56,18 +56,28 @@ template <typename T> class Image
     using const_iterator = std::vector<T>::const_iterator;
 
   public:
-    Image(size_t width, size_t height) : resolution(width, height), pixels(width * height)
+    Image(size_t width, size_t height) : res(width, height), pixels(width * height)
     {
     }
 
     [[nodiscard]] constexpr inline size_t width() const noexcept
     {
-        return resolution.width;
+        return res.width;
     }
 
     [[nodiscard]] constexpr inline size_t height() const noexcept
     {
-        return resolution.height;
+        return res.height;
+    }
+
+    [[nodiscard]] constexpr inline size_t size() const noexcept
+    {
+        return width() * height();
+    }
+
+    [[nodiscard]] constexpr inline const Resolution &resolution() const noexcept
+    {
+        return resolution;
     }
 
     [[nodiscard]] constexpr inline T &operator[](size_t i) noexcept
@@ -111,7 +121,7 @@ template <typename T> class Image
     }
 
   private:
-    Resolution resolution;
+    Resolution res;
     std::vector<T> pixels;
 };
 

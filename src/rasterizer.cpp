@@ -1,12 +1,11 @@
 #include <algorithm>
 #include <cmath>
 #include <execution>
-#include <iostream>
 #include <limits>
-#include <ostream>
 #include <vector>
 
 #include "camera.hpp"
+#include "counting_iterator.hpp"
 #include "matrix.hpp"
 #include "rasterizer.hpp"
 #include "types.hpp"
@@ -194,6 +193,68 @@ constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const
     }
 }
 
+constexpr inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &texture) noexcept
+{
+    f32 x = std::clamp(uv.x() * (f32)(texture.width() - 1), 0.0f, (f32)(texture.width() - 1));
+    f32 y = std::clamp(uv.y() * (f32)(texture.height() - 1), 0.0f, (f32)(texture.height() - 1));
+
+    size_t fx = floor_to_size(x);
+    size_t cx = ceil_to_size(x);
+    size_t fy = floor_to_size(y);
+    size_t cy = ceil_to_size(y);
+
+    RGB<f32> a = texture[fx, fy];
+    RGB<f32> b = texture[cx, fy];
+    RGB<f32> c = texture[fx, cy];
+    RGB<f32> d = texture[cx, cy];
+
+    f32 s = x - (f32)fx;
+    f32 t = y - (f32)fy;
+
+    f32 red = (1.0f - s) * (1.0f - t) * a.r + s * (1.0f - t) * b.r + (1.0f - s) * t * c.r + s * t * d.r;
+    f32 green = (1.0f - s) * (1.0f - t) * a.g + s * (1.0f - t) * b.g + (1.0f - s) * t * c.g + s * t * d.g;
+    f32 blue = (1.0f - s) * (1.0f - t) * a.b + s * (1.0f - t) * b.b + (1.0f - s) * t * c.b + s * t * d.b;
+    return {red, green, blue};
+}
+
+constexpr inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture &texture) noexcept
+{
+    size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
+    size_t ty = floor_to_size(uv.y() * (f32)(texture.height() - 1));
+    return texture[tx, ty];
+}
+
+constexpr inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3,
+                                      const Vec2f &uv1, const Vec2f &uv2, const Vec2f &uv3) noexcept
+{
+    Vec2f sv1 = {v1.x(), v1.y()};
+    Vec2f sv2 = {v2.x(), v2.y()};
+    Vec2f sv3 = {v3.x(), v3.y()};
+
+    f32 w = 1.0f / edge(sv1, sv2, sv3);
+
+    f32 ba = edge(sv2, sv3, at) * w;
+    f32 bb = edge(sv3, sv1, at) * w;
+    f32 bc = 1.0f - ba - bb;
+
+    f32 wa = v1.w();
+    f32 wb = v2.w();
+    f32 wc = v3.w();
+
+    f32 iwa = 1.0f / wa;
+    f32 iwb = 1.0f / wb;
+    f32 iwc = 1.0f / wc;
+
+    Vec2f uv1i = uv1 * iwa;
+    Vec2f uv2i = uv2 * iwb;
+    Vec2f uv3i = uv3 * iwc;
+
+    Vec2f uv_interp = ba * uv1i + bb * uv2i + bc * uv3i;
+    f32 invw_interp = ba * iwa + bb * iwb + bc * iwc;
+
+    return uv_interp / invw_interp;
+}
+
 template <size_t Rows, size_t Cols>
 constexpr inline Matrix<BoundingBox<f32>, Rows, Cols> make_grid(const Resolution &resolution) noexcept
 {
@@ -269,107 +330,44 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
 
 void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept
 {
-    for (size_t y = 0; y < index_buffer.height(); ++y)
-    {
-        for (size_t x = 0; x < index_buffer.width(); ++x)
+    using namespace std;
+    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
+        size_t x = i % index_buffer.width();
+        size_t y = i / index_buffer.width();
+
+        size_t index = index_buffer[x, y];
+        if (index != numeric_limits<size_t>::max())
         {
-            size_t index = index_buffer[x, y];
-            if (index != std::numeric_limits<size_t>::max())
-            {
-                image[x, y] = colors[index];
-            }
+            image[x, y] = colors[index];
         }
-    }
-}
-
-inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &texture)
-{
-    f32 x = std::clamp(uv.x() * (f32)(texture.width() - 1), 0.0f, (f32)(texture.width() - 1));
-    f32 y = std::clamp(uv.y() * (f32)(texture.height() - 1), 0.0f, (f32)(texture.height() - 1));
-
-    size_t fx = floor_to_size(x);
-    size_t cx = ceil_to_size(x);
-    size_t fy = floor_to_size(y);
-    size_t cy = ceil_to_size(y);
-
-    RGB<f32> a = texture[fx, fy];
-    RGB<f32> b = texture[cx, fy];
-    RGB<f32> c = texture[fx, cy];
-    RGB<f32> d = texture[cx, cy];
-
-    f32 s = x - (f32)fx;
-    f32 t = y - (f32)fy;
-
-    f32 red = (1.0f - s) * (1.0f - t) * a.r + s * (1.0f - t) * b.r + (1.0f - s) * t * c.r + s * t * d.r;
-    f32 green = (1.0f - s) * (1.0f - t) * a.g + s * (1.0f - t) * b.g + (1.0f - s) * t * c.g + s * t * d.g;
-    f32 blue = (1.0f - s) * (1.0f - t) * a.b + s * (1.0f - t) * b.b + (1.0f - s) * t * c.b + s * t * d.b;
-    return {red, green, blue};
-}
-
-inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture &texture)
-{
-    size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
-    size_t ty = floor_to_size(uv.y() * (f32)(texture.height() - 1));
-    return texture[tx, ty];
-}
-
-inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3, const Vec2f &uv1,
-                            const Vec2f &uv2, const Vec2f &uv3) noexcept
-{
-    Vec2f sv1 = {v1.x(), v1.y()};
-    Vec2f sv2 = {v2.x(), v2.y()};
-    Vec2f sv3 = {v3.x(), v3.y()};
-
-    f32 w = 1.0f / edge(sv1, sv2, sv3);
-
-    f32 ba = edge(sv2, sv3, at) * w;
-    f32 bb = edge(sv3, sv1, at) * w;
-    f32 bc = 1.0f - ba - bb;
-
-    f32 wa = v1.w();
-    f32 wb = v2.w();
-    f32 wc = v3.w();
-
-    f32 iwa = 1.0f / wa;
-    f32 iwb = 1.0f / wb;
-    f32 iwc = 1.0f / wc;
-
-    Vec2f uv1i = uv1 * iwa;
-    Vec2f uv2i = uv2 * iwb;
-    Vec2f uv3i = uv3 * iwc;
-
-    Vec2f uv_interp = ba * uv1i + bb * uv2i + bc * uv3i;
-    f32 invw_interp = ba * iwa + bb * iwb + bc * iwc;
-
-    return uv_interp / invw_interp;
+    });
 }
 
 void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
                     const std::vector<Vec2f> &texture_coordinates, const Texture &texture,
                     const IndexBuffer &index_buffer) noexcept
 {
-    for (size_t y = 0; y < index_buffer.height(); ++y)
-    {
-        for (size_t x = 0; x < index_buffer.width(); ++x)
+    using namespace std;
+    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
+        size_t x = i % index_buffer.width();
+        size_t y = i / index_buffer.width();
+        size_t index = index_buffer[x, y];
+        if (index != std::numeric_limits<size_t>::max())
         {
-            size_t index = index_buffer[x, y];
-            if (index != std::numeric_limits<size_t>::max())
-            {
-                const auto &face = faces[index];
-                const auto v1 = screen_vertices[face.vertex_indices[0]];
-                const auto v2 = screen_vertices[face.vertex_indices[1]];
-                const auto v3 = screen_vertices[face.vertex_indices[2]];
+            const auto &face = faces[index];
+            const auto v1 = screen_vertices[face.vertex_indices[0]];
+            const auto v2 = screen_vertices[face.vertex_indices[1]];
+            const auto v3 = screen_vertices[face.vertex_indices[2]];
 
-                const auto uv1 = texture_coordinates[face.texture_indices[0]];
-                const auto uv2 = texture_coordinates[face.texture_indices[1]];
-                const auto uv3 = texture_coordinates[face.texture_indices[2]];
-                const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
-                const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
-                // image[x, y] = convert(sample_nearest_neighbor(uv, texture));
-                image[x, y] = convert(sample_bilinear(uv, texture));
-            }
+            const auto uv1 = texture_coordinates[face.texture_indices[0]];
+            const auto uv2 = texture_coordinates[face.texture_indices[1]];
+            const auto uv3 = texture_coordinates[face.texture_indices[2]];
+            const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
+            const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
+            // image[x, y] = convert(sample_nearest_neighbor(uv, texture));
+            image[x, y] = convert(sample_bilinear(uv, texture));
         }
-    }
+    });
 }
 
 void dump_ppm(const ColorImage &image, std::ostream &stream)

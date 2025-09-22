@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "camera.hpp"
-#include "counting_iterator.hpp"
 #include "math.hpp"
 #include "matrix.hpp"
 #include "rasterizer.hpp"

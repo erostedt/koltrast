@@ -35,16 +35,18 @@ constexpr inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture
     return texture[tx, ty];
 }
 
-constexpr inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3,
-                                      const Vec2f &uv1, const Vec2f &uv2, const Vec2f &uv3) noexcept
+constexpr inline Vec3f barycentric(const Vec2f &at, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3) noexcept
 {
     const Vec4f p = {at.x(), at.y(), 0.0f, 0.0f};
     f32 w = 1.0f / edge_function(v1, v2, v3);
+    f32 a = edge_function(v2, v3, p) * w;
+    f32 b = edge_function(v3, v1, p) * w;
+    return {a, b, 1.0f - a - b};
+}
 
-    f32 ba = edge_function(v2, v3, p) * w;
-    f32 bb = edge_function(v3, v1, p) * w;
-    f32 bc = 1.0f - ba - bb;
-
+constexpr inline Vec2f interpolate_uv(const Vec3f &bary, const Vec4f &v1, const Vec4f &v2, const Vec4f &v3,
+                                      const Vec2f &uv1, const Vec2f &uv2, const Vec2f &uv3) noexcept
+{
     f32 wa = v1.w();
     f32 wb = v2.w();
     f32 wc = v3.w();
@@ -57,8 +59,8 @@ constexpr inline Vec2f interpolate_uv(const Vec2f &at, const Vec4f &v1, const Ve
     Vec2f uv2i = uv2 * iwb;
     Vec2f uv3i = uv3 * iwc;
 
-    Vec2f uv_interp = ba * uv1i + bb * uv2i + bc * uv3i;
-    f32 invw_interp = ba * iwa + bb * iwb + bc * iwc;
+    Vec2f uv_interp = bary.x() * uv1i + bary.y() * uv2i + bary.z() * uv3i;
+    f32 invw_interp = bary.x() * iwa + bary.y() * iwb + bary.z() * iwc;
 
     return uv_interp / invw_interp;
 }
@@ -98,8 +100,9 @@ inline void render_triangles(ColorImage &image, const std::vector<Face> &faces,
             const auto uv1 = texture_coordinates[face.texture_indices[0]];
             const auto uv2 = texture_coordinates[face.texture_indices[1]];
             const auto uv3 = texture_coordinates[face.texture_indices[2]];
-            const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
-            const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
+
+            const auto bary = barycentric({(f32)x + 0.5f, (f32)y + 0.5f}, v1, v2, v3);
+            const auto uv = interpolate_uv(bary, v1, v2, v3, uv1, uv2, uv3);
             image[x, y] = sample_bilinear(uv, texture);
         }
     });

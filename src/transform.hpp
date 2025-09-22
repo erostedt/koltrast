@@ -1,10 +1,7 @@
 #pragma once
 #include "camera.hpp"
-#include "matrix.hpp"
+#include "types.hpp"
 #include <concepts>
-
-template <typename T> using Mat4x4 = Matrix<T, 4, 4>;
-template <typename T> using Vec3 = Vector<T, 3>;
 
 template <std::floating_point T> [[nodiscard]] constexpr inline Mat4x4<T> translation(T x, T y, T z) noexcept
 {

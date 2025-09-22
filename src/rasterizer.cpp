@@ -10,11 +10,6 @@
 #include "rasterizer.hpp"
 #include "types.hpp"
 
-using Mat4x4f = Matrix<f32, 4, 4>;
-using Vec4f = Vector<f32, 4>;
-using Vec3f = Vector<f32, 3>;
-using Vec2f = Vector<f32, 2>;
-
 template <typename T> struct BoundingBox
 {
     Vector<T, 2> top_left;

@@ -1,6 +1,7 @@
 Phong
 Scene
 
+Fix missing floating_point templates
 Skybox
 AA
 Simd?

@@ -13,10 +13,9 @@ struct Face
     size_t texture_indices[3] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
     size_t normal_indices[3] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
 };
+
 struct Mesh
 {
-    using Vec3f = Vector<f32, 3>;
-    using Vec2f = Vector<f32, 2>;
     std::vector<Vec3f> vertices{};
     std::vector<Vec2f> texture_coordinates{};
     std::vector<Vec3f> normals{};

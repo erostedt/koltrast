@@ -1,7 +1,5 @@
 #include "camera.hpp"
-
-using Vec3f = Vector<f32, 3>;
-using Vec2f = Vector<f32, 2>;
+#include "types.hpp"
 
 struct PointLight
 {

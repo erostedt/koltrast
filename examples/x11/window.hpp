@@ -138,7 +138,7 @@ class DrawFrame
         XCopyArea(display, pixmap, window.window, gc, 0, 0, rect.width, rect.height, 0, 0);
     }
 
-    void blit(const Image<RGB<u8>> &image)
+    void blit(const Image<RGB<f32>> &image)
     {
         using namespace std;
 
@@ -152,8 +152,11 @@ class DrawFrame
         const auto gshift = countr_zero(gmask);
         const auto bshift = countr_zero(bmask);
 
-        const auto pack_pixel = [&](const RGB<u8> &px) {
-            return ((u32)px.r << rshift & rmask) | ((u32)px.g << gshift & gmask) | ((u32)px.b << bshift & bmask);
+        const auto pack_pixel = [&](const RGB<f32> &color) {
+            const auto r = std::clamp(color.r * 255.0f, 0.0f, 255.0f);
+            const auto g = std::clamp(color.g * 255.0f, 0.0f, 255.0f);
+            const auto b = std::clamp(color.b * 255.0f, 0.0f, 255.0f);
+            return ((u32)r << rshift & rmask) | ((u32)g << gshift & gmask) | ((u32)b << bshift & bmask);
         };
 
         u32 *dst = reinterpret_cast<u32 *>(window.image->data);

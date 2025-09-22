@@ -27,14 +27,18 @@ int main(int argc, char **argv)
     const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
     const auto view = look_at<f32>({0.0f, 0.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
-    const auto mvp = proj * view * model;
+    const auto vp = proj * view;
 
     ColorImage image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
+    std::vector<Vector<f32, 4>> world_vertices;
+    std::vector<Vector<f32, 3>> world_normals;
+    model_to_world(mesh.vertices, mesh.normals, model, world_vertices, world_normals);
+
     std::vector<Vector<f32, 4>> screen_vertices;
-    project_to_screen(mesh.vertices, mvp, camera.resolution, screen_vertices);
+    project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
     rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
     draw_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
 

@@ -332,7 +332,7 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
     });
 }
 
-void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept
+void draw_triangles(ColorImage &image, const std::vector<RGB<f32>> &colors, const IndexBuffer &index_buffer) noexcept
 {
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
@@ -369,7 +369,8 @@ void draw_triangles(ColorImage &image, const std::vector<Face> &faces, const std
             const Vec2f pixel_center = {(f32)x + 0.5f, (f32)y + 0.5f};
             const auto uv = interpolate_uv(pixel_center, v1, v2, v3, uv1, uv2, uv3);
             // image[x, y] = convert(sample_nearest_neighbor(uv, texture));
-            image[x, y] = convert(sample_bilinear(uv, texture));
+
+            image[x, y] = sample_bilinear(uv, texture);
         }
     });
 }
@@ -381,7 +382,10 @@ void dump_ppm(const ColorImage &image, std::ostream &stream)
     stream << image.width() << ' ' << image.height() << "\n255\n";
 
     const auto write_pixel = [&stream](const auto &color) {
-        stream << (int)color.r << ' ' << (int)color.g << ' ' << (int)color.b << '\n';
+        const auto r = std::clamp(color.r * 255.0f, 0.0f, 255.0f);
+        const auto g = std::clamp(color.g * 255.0f, 0.0f, 255.0f);
+        const auto b = std::clamp(color.b * 255.0f, 0.0f, 255.0f);
+        stream << (int)r << ' ' << (int)g << ' ' << (int)b << '\n';
     };
 
     for_each(image, write_pixel);

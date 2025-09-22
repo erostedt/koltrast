@@ -5,7 +5,7 @@
 #include "texture.hpp"
 #include "types.hpp"
 
-using ColorImage = Image<RGB<u8>>;
+using ColorImage = Image<RGB<f32>>;
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
 
@@ -20,7 +20,7 @@ void rasterize_triangles(const std::vector<Vector<f32, 4>> &screen_vertices, Dep
 void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vector<f32, 4>> &screen_vertices,
                          DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept;
 
-void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept;
+void draw_triangles(ColorImage &image, const std::vector<RGB<f32>> &colors, const IndexBuffer &index_buffer) noexcept;
 void draw_triangles(ColorImage &image, const std::vector<Face> &faces,
                     const std::vector<Vector<f32, 4>> &screen_vertices,
                     const std::vector<Vector<f32, 2>> &texture_coordinates, const Texture &texture,

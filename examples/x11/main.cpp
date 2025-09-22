@@ -8,6 +8,8 @@
 
 #include "camera.hpp"
 #include "check.hpp"
+#include "counting_iterator.hpp"
+#include "light.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
@@ -21,6 +23,10 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+
+using Vec4f = Vector<f32, 4>;
+using Vec3f = Vector<f32, 3>;
+using Vec2f = Vector<f32, 2>;
 
 class PrintFps
 {
@@ -42,6 +48,61 @@ class PrintFps
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> ns;
 };
 
+[[nodiscard]] constexpr inline f32 edge(Vec4f p1, Vec4f p2, Vec4f p3) noexcept
+{
+    return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
+}
+
+void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::vector<Face> &faces,
+                    const std::vector<Vec4f> &screen_vertices, const std::vector<Vec4f> &world_vertices,
+                    const std::vector<Vec3f> &world_normals, const IndexBuffer &index_buffer)
+{
+    Vec3f light_position = {1.0f, 0.0f, 0.0f};
+    RGB<f32> light_color = {0.0f, 1.0f, 0.0f};
+
+    f32 ambient = 0.1f;
+    f32 specular = 0.5f;
+    f32 shininess = 8.0f;
+    using namespace std;
+    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
+        size_t x = i % index_buffer.width();
+        size_t y = i / index_buffer.width();
+        size_t index = index_buffer[x, y];
+        if (index != std::numeric_limits<size_t>::max())
+        {
+            const auto &face = faces[index];
+            const auto sv1 = screen_vertices[face.vertex_indices[0]];
+            const auto sv2 = screen_vertices[face.vertex_indices[1]];
+            const auto sv3 = screen_vertices[face.vertex_indices[2]];
+
+            const auto wv1 = world_vertices[face.vertex_indices[0]];
+            const auto wv2 = world_vertices[face.vertex_indices[1]];
+            const auto wv3 = world_vertices[face.vertex_indices[2]];
+
+            const auto wn1 = world_normals[face.normal_indices[0]];
+            const auto wn2 = world_normals[face.normal_indices[1]];
+            const auto wn3 = world_normals[face.normal_indices[2]];
+
+            const Vec4f p = {(f32)x + 0.5f, (f32)y + 0.5f, 0.0f, 0.0f};
+
+            f32 area = edge(sv1, sv2, sv3);
+            f32 w = 1.0f / area;
+
+            Vector<f32, 3> weights = {
+                w * edge(sv2, sv3, p),
+                w * edge(sv3, sv1, p),
+                w * edge(sv1, sv2, p),
+            };
+
+            const auto world_position = (weights.x() * wv1 + weights.y() * wv2 + weights.z() * wv3).xyz();
+            const auto world_normal = (weights.x() * wn1 + weights.y() * wn2 + weights.z() * wn3);
+
+            image[x, y] = point_light(world_position, world_normal, light_position, camera_position, image[x, y],
+                                      light_color, ambient, specular, shininess);
+        }
+    });
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -54,7 +115,8 @@ int main(int argc, char **argv)
     const auto texture = load_texture(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
-    const auto view = look_at<f32>({0.0f, 0.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
+    const Vector<f32, 3> camera_position = {0.0f, 0.0f, 2.0f};
+    const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
     ColorImage image(camera.resolution.width, camera.resolution.height);
@@ -62,8 +124,10 @@ int main(int argc, char **argv)
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
-    std::vector<Vector<f32, 4>> screen_vertices;
 
+    std::vector<Vector<f32, 4>> world_vertices;
+    std::vector<Vector<f32, 3>> world_normals;
+    std::vector<Vector<f32, 4>> screen_vertices;
     size_t degrees = 0;
     while (!window.should_close)
     {
@@ -79,17 +143,21 @@ int main(int argc, char **argv)
 
         degrees = (degrees + 1) % 360;
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
-        const auto mvp = proj * view * model;
+        const auto vp = proj * view;
 
         reset_depth_buffer(depth_buffer);
         reset_index_buffer(index_buffer);
-        std::fill(image.begin(), image.end(), BLACK<u8>);
+        std::fill(image.begin(), image.end(), BLACK<f32>);
 
         DrawFrame frame(window);
 
-        project_to_screen(mesh.vertices, mvp, camera.resolution, screen_vertices);
+        model_to_world(mesh.vertices, mesh.normals, model, world_vertices, world_normals);
+
+        project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
         draw_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
+        apply_lighting(image, camera_position, mesh.faces, screen_vertices, world_vertices, world_normals,
+                       index_buffer);
 
         frame.blit(image);
     }

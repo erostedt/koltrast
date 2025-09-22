@@ -154,10 +154,34 @@ template <std::floating_point T>
 }
 
 template <std::floating_point T>
-Vector<T, 4> project_to_screen(const Vector<T, 3> &world_point, const Matrix<T, 4, 4> &mvp, const Resolution &res)
+constexpr inline void model_to_world(const std::vector<Vector<T, 3>> &model_vertices,
+                                     const std::vector<Vector<T, 3>> &model_normals,
+                                     const Matrix<T, 4, 4> &model_matrix, std::vector<Vector<T, 4>> &world_vertices,
+                                     std::vector<Vector<T, 3>> &world_normals) noexcept
 {
-    const Vector<T, 4> world_point_homo = {world_point.x(), world_point.y(), world_point.z(), T{1}};
-    const auto clip = mvp * world_point_homo;
+    Matrix<T, 3, 3> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
+                            model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
+                            model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
+
+    Matrix<T, 3, 3> normal_matrix = mat3.inverse().value().transposed();
+
+    world_vertices.resize(model_vertices.size());
+    world_normals.resize(model_normals.size());
+
+    using namespace std;
+    transform(execution::par_unseq, begin(model_vertices), end(model_vertices), begin(world_vertices),
+              [&](const Vector<T, 3> &vertex) {
+                  return model_matrix * Vector<T, 4>{vertex.x(), vertex.y(), vertex.z(), T{1}};
+              });
+
+    transform(execution::par_unseq, begin(model_normals), end(model_normals), begin(world_normals),
+              [&](const Vector<T, 3> &normal) { return *(normal_matrix * normal).normalized(); });
+}
+
+template <std::floating_point T>
+Vector<T, 4> project_to_screen(const Vector<T, 4> &world_point, const Matrix<T, 4, 4> &vp, const Resolution &res)
+{
+    const auto clip = vp * world_point;
     CHECK(std::abs(clip.w()) > T{1e-6f});
     const Vector<T, 3> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
     const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(res.width);
@@ -167,11 +191,11 @@ Vector<T, 4> project_to_screen(const Vector<T, 3> &world_point, const Matrix<T, 
 }
 
 template <std::floating_point T>
-void project_to_screen(const std::vector<Vector<T, 3>> &world_vertices, const Matrix<T, 4, 4> &mvp,
+void project_to_screen(const std::vector<Vector<T, 4>> &world_vertices, const Matrix<T, 4, 4> &vp,
                        const Resolution &resolution, std::vector<Vector<T, 4>> &screen_vertices)
 {
     using namespace std;
     screen_vertices.resize(world_vertices.size());
     transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices),
-              [&](const Vector<T, 3> &vertex) { return project_to_screen(vertex, mvp, resolution); });
+              [&](const Vector<T, 4> &vertex) { return project_to_screen(vertex, vp, resolution); });
 }

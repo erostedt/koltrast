@@ -5,6 +5,7 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <execution>
 #include <numbers>
 #include <vector>
 
@@ -157,9 +158,8 @@ template <std::floating_point T>
 void project_to_screen(const std::vector<Vector<T, 3>> &world_vertices, const Matrix<T, 4, 4> &mvp,
                        const Resolution &resolution, std::vector<Vector<T, 4>> &screen_vertices)
 {
-    screen_vertices.reserve(screen_vertices.size() + world_vertices.size());
-    for (const auto &vertex : world_vertices)
-    {
-        screen_vertices.push_back(project_to_screen(vertex, mvp, resolution));
-    }
+    using namespace std;
+    screen_vertices.resize(world_vertices.size());
+    transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices),
+              [&](const Vector<T, 3> &vertex) { return project_to_screen(vertex, mvp, resolution); });
 }

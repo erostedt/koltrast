@@ -97,8 +97,12 @@ void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::
             const auto world_position = (weights.x() * wv1 + weights.y() * wv2 + weights.z() * wv3).xyz();
             const auto world_normal = (weights.x() * wn1 + weights.y() * wn2 + weights.z() * wn3);
 
-            image[x, y] = point_light(world_position, world_normal, light_position, camera_position, image[x, y],
-                                      light_color, ambient, specular, shininess);
+            const RGB<f32> light = point_light(world_position, world_normal, light_position, camera_position,
+                                               light_color, specular, shininess);
+
+            const RGB<f32> object_color = image[x, y];
+            image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
+                           (ambient + light.b) * object_color.b};
         }
     });
 }

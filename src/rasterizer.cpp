@@ -45,6 +45,11 @@ template <typename T> struct BoundingBox
     return {{left, top}, {right, bottom}};
 }
 
+template <typename T> [[nodiscard]] constexpr inline BoundingBox<f32> bounding_box(const Image<T> &image) noexcept
+{
+    return {{0.0f, 0.0f}, {(f32)image.width(), (f32)image.height()}};
+}
+
 [[nodiscard]] constexpr inline BoundingBox<f32> intersect(const BoundingBox<f32> &bb1,
                                                           const BoundingBox<f32> &bb2) noexcept
 {
@@ -87,31 +92,28 @@ template <typename T> struct BoundingBox
     };
 }
 
-inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec4f &p2, const Vec4f &p3,
-                               DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec4f &p2, const Vec4f &p3,
+                                         const BoundingBox<f32> &bounds, DepthBuffer &depth_buffer,
+                                         IndexBuffer &index_buffer) noexcept
 {
     // Backface
+    f32 tol = 1e-6f;
     f32 area = edge(p1, p2, p3);
-    if (area <= 0.0f)
+    if (area <= tol)
     {
-        std::cerr << "Backface" << std::endl;
         return;
     }
 
     if (out_of_z_bounds(p1) && out_of_z_bounds(p2) && out_of_z_bounds(p3))
     {
-        std::cerr << "OOB" << std::endl;
         return;
     }
 
-    // const BoundingBox<f32> bounds = {{0.0f, 0.0f}, {(f32)depth_buffer.width(), (f32)depth_buffer.height()}};
-    const BoundingBox<f32> bounds = {{0.0f, 0.0f}, {1280.0f, 720.0f}};
     const auto box = bounding_box(p1, p2, p3);
     const auto intersection = intersect(box, bounds);
 
     if (is_empty(intersection))
     {
-        std::cerr << "EMPTY" << std::endl;
         return;
     }
 
@@ -142,8 +144,6 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
 
     Vector<f32, 3> zs = {p1.z(), p2.z(), p3.z()};
 
-    std::cerr << domain.top_left.y() << " " << domain.bottom_right.y() << std::endl;
-    std::cerr << domain.top_left.x() << " " << domain.bottom_right.x() << std::endl;
     for (size_t y = domain.top_left.y(); y < domain.bottom_right.y(); ++y)
     {
         Vector<f32, 3> cw = weights;
@@ -163,6 +163,32 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
             cw += dx;
         }
         weights += dy;
+    }
+}
+
+constexpr inline void _rasterize_triangles(const std::vector<Vec4f> &screen_vertices, const BoundingBox<f32> &bounds,
+                                           DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+{
+    for (size_t i = 0; i < screen_vertices.size(); i += 3)
+    {
+        const auto v1 = screen_vertices[i + 0];
+        const auto v2 = screen_vertices[i + 1];
+        const auto v3 = screen_vertices[i + 2];
+        rasterize_triangle(i / 3, v1, v2, v3, bounds, depth_buffer, index_buffer);
+    }
+}
+
+constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
+                                           const BoundingBox<f32> &bounds, DepthBuffer &depth_buffer,
+                                           IndexBuffer &index_buffer) noexcept
+{
+    for (size_t i = 0; i < faces.size(); ++i)
+    {
+        const auto &face = faces[i];
+        const auto a = screen_vertices[face.vertex_indices[0]];
+        const auto b = screen_vertices[face.vertex_indices[1]];
+        const auto c = screen_vertices[face.vertex_indices[2]];
+        rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
     }
 }
 
@@ -200,26 +226,17 @@ void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer 
                          IndexBuffer &index_buffer) noexcept
 {
     CHECK(screen_vertices.size() % 3 == 0);
-    for (size_t i = 0; i < screen_vertices.size(); i += 3)
-    {
-        const auto v1 = screen_vertices[i + 0];
-        const auto v2 = screen_vertices[i + 1];
-        const auto v3 = screen_vertices[i + 2];
-        rasterize_triangle(i / 3, v1, v2, v3, depth_buffer, index_buffer);
-    }
+    CHECK(depth_buffer.width() == index_buffer.width());
+    CHECK(depth_buffer.height() == index_buffer.height());
+    _rasterize_triangles(screen_vertices, bounding_box(depth_buffer), depth_buffer, index_buffer);
 }
 
 void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
                          DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
-    for (size_t i = 0; i < faces.size(); ++i)
-    {
-        const auto &face = faces[i];
-        const auto a = screen_vertices[face.vertex_indices[0]];
-        const auto b = screen_vertices[face.vertex_indices[1]];
-        const auto c = screen_vertices[face.vertex_indices[2]];
-        rasterize_triangle(i, a, b, c, depth_buffer, index_buffer);
-    }
+    CHECK(depth_buffer.width() == index_buffer.width());
+    CHECK(depth_buffer.height() == index_buffer.height());
+    _rasterize_triangles(faces, screen_vertices, bounding_box(depth_buffer), depth_buffer, index_buffer);
 }
 
 void draw_triangles(ColorImage &image, const std::vector<RGB<u8>> &colors, const IndexBuffer &index_buffer) noexcept

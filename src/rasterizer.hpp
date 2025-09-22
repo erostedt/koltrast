@@ -2,10 +2,10 @@
 #include "camera.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
+#include "texture.hpp"
 #include "types.hpp"
 
 using ColorImage = Image<RGB<u8>>;
-using Texture = Image<RGB<f32>>;
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
 

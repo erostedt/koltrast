@@ -311,7 +311,12 @@ void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer 
     CHECK(screen_vertices.size() % 3 == 0);
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());
-    _rasterize_triangles(screen_vertices, bounding_box(depth_buffer), depth_buffer, index_buffer);
+
+    using namespace std;
+    const auto grid = make_grid<4, 4>({depth_buffer.width(), depth_buffer.height()});
+    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<f32> &bounds) {
+        _rasterize_triangles(screen_vertices, bounds, depth_buffer, index_buffer);
+    });
 }
 
 void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
@@ -322,7 +327,6 @@ void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f
 
     using namespace std;
     const auto grid = make_grid<4, 4>({depth_buffer.width(), depth_buffer.height()});
-
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<f32> &bounds) {
         _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);
     });

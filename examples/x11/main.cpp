@@ -78,19 +78,9 @@ void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::
             const auto wn2 = world_normals[face.normal_indices[1]];
             const auto wn3 = world_normals[face.normal_indices[2]];
 
-            const Vec4f p = {(f32)x + 0.5f, (f32)y + 0.5f, 0.0f, 0.0f};
-
-            f32 area = edge_function(sv1, sv2, sv3);
-            f32 w = 1.0f / area;
-
-            Vector<f32, 3> weights = {
-                w * edge_function(sv2, sv3, p),
-                w * edge_function(sv3, sv1, p),
-                w * edge_function(sv1, sv2, p),
-            };
-
-            const auto world_position = (weights.x() * wv1 + weights.y() * wv2 + weights.z() * wv3).xyz();
-            const auto world_normal = (weights.x() * wn1 + weights.y() * wn2 + weights.z() * wn3);
+            const auto bary = barycentric({(f32)x + 0.5f, (f32)y + 0.5f}, sv1, sv2, sv3);
+            const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
+            const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
 
             const RGB<f32> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
 

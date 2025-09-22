@@ -14,6 +14,12 @@ using Vec4f = Vector<f32, 4>;
 using Vec3f = Vector<f32, 3>;
 using Vec2f = Vector<f32, 2>;
 
+template <typename T> struct BoundingBox
+{
+    Vector<T, 2> top_left;
+    Vector<T, 2> bottom_right;
+};
+
 [[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
 {
     return static_cast<size_t>(std::floor(x));
@@ -24,26 +30,31 @@ using Vec2f = Vector<f32, 2>;
     return static_cast<size_t>(std::ceil(x));
 }
 
-[[nodiscard]] constexpr inline BoundingBox clamped_triangle_bounding_box(const Vec4f &p1, const Vec4f &p2,
-                                                                         const Vec4f &p3,
-                                                                         const BoundingBox &bounds) noexcept
+[[nodiscard]] constexpr inline bool is_empty(const BoundingBox<f32> &bb) noexcept
 {
-    CHECK(bounds.top_left.x() <= bounds.bottom_right.x());
-    CHECK(bounds.top_left.y() <= bounds.bottom_right.y());
+    return bb.top_left.x() >= bb.bottom_right.x() || bb.top_left.y() >= bb.bottom_right.y();
+}
 
+[[nodiscard]] constexpr inline BoundingBox<f32> bounding_box(const Vec4f &p1, const Vec4f &p2, const Vec4f &p3) noexcept
+{
     using namespace std;
     f32 left = min(min(p1.x(), p2.x()), p3.x());
-    size_t clamped_left = max(floor_to_size(max(left, 0.0f)), bounds.top_left.x());
-
     f32 top = min(min(p1.y(), p2.y()), p3.y());
-    size_t clamped_top = max(floor_to_size(max(top, 0.0f)), bounds.top_left.y());
-
     f32 right = max(max(p1.x(), p2.x()), p3.x());
-    size_t clamped_right = min(ceil_to_size(max(right, 0.0f)), bounds.bottom_right.x());
-
     f32 bottom = max(max(p1.y(), p2.y()), p3.y());
-    size_t clamped_bottom = min(ceil_to_size(max(bottom, 0.0f)), bounds.bottom_right.y());
-    return {{clamped_left, clamped_top}, {clamped_right, clamped_bottom}};
+    return {{left, top}, {right, bottom}};
+}
+
+[[nodiscard]] constexpr inline BoundingBox<f32> intersect(const BoundingBox<f32> &bb1,
+                                                          const BoundingBox<f32> &bb2) noexcept
+{
+    using namespace std;
+    f32 l = max(bb1.top_left.x(), bb2.top_left.x());
+    f32 r = min(bb1.bottom_right.x(), bb2.bottom_right.x());
+
+    f32 t = max(bb1.top_left.y(), bb2.top_left.y());
+    f32 b = min(bb1.bottom_right.y(), bb2.bottom_right.y());
+    return {{l, t}, {r, b}};
 }
 
 [[nodiscard]] constexpr inline f32 edge(Vec4f p1, Vec4f p2, Vec4f p3) noexcept
@@ -56,13 +67,24 @@ using Vec2f = Vector<f32, 2>;
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }
 
-[[nodiscard]] constexpr inline bool out_of_bounds(const Vec4f &point, const BoundingBox &bounds) noexcept
+[[nodiscard]] constexpr inline bool out_of_z_bounds(const Vec4f &point) noexcept
 {
-    // TODO: CHECK IF CORRECT INEQUALITIES
-    return point.x() < static_cast<f32>(bounds.top_left.x()) ||
-           point.x() >= static_cast<f32>(bounds.bottom_right.x()) ||
-           point.y() < static_cast<f32>(bounds.top_left.y()) ||
-           point.y() >= static_cast<f32>(bounds.bottom_right.y()) || point.z() < 0.0f || point.z() > 1.0f;
+    return point.z() < 0.0f || point.z() > 1.0f;
+}
+
+[[nodiscard]] constexpr inline BoundingBox<size_t> iteration_domain(const BoundingBox<f32> &bb) noexcept
+{
+    using namespace std;
+    return {
+        {
+            floor_to_size(max(bb.top_left.x(), 0.0f)),
+            floor_to_size(max(bb.top_left.y(), 0.0f)),
+        },
+        {
+            ceil_to_size(bb.bottom_right.x()),
+            ceil_to_size(bb.bottom_right.y()),
+        },
+    };
 }
 
 inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec4f &p2, const Vec4f &p3,
@@ -72,20 +94,31 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
     f32 area = edge(p1, p2, p3);
     if (area <= 0.0f)
     {
+        std::cerr << "Backface" << std::endl;
         return;
     }
 
-    BoundingBox bounds = {{0u, 0u}, {depth_buffer.width(), depth_buffer.height()}};
-
-    if (out_of_bounds(p1, bounds) && out_of_bounds(p2, bounds) && out_of_bounds(p3, bounds))
+    if (out_of_z_bounds(p1) && out_of_z_bounds(p2) && out_of_z_bounds(p3))
     {
+        std::cerr << "OOB" << std::endl;
         return;
     }
 
-    BoundingBox box = clamped_triangle_bounding_box(p1, p2, p3, bounds);
+    // const BoundingBox<f32> bounds = {{0.0f, 0.0f}, {(f32)depth_buffer.width(), (f32)depth_buffer.height()}};
+    const BoundingBox<f32> bounds = {{0.0f, 0.0f}, {1280.0f, 720.0f}};
+    const auto box = bounding_box(p1, p2, p3);
+    const auto intersection = intersect(box, bounds);
 
-    f32 left = (f32)box.top_left.x() + 0.5f;
-    f32 top = (f32)box.top_left.y() + 0.5f;
+    if (is_empty(intersection))
+    {
+        std::cerr << "EMPTY" << std::endl;
+        return;
+    }
+
+    const auto domain = iteration_domain(intersection);
+
+    f32 left = (f32)domain.top_left.x() + 0.5f;
+    f32 top = (f32)domain.top_left.y() + 0.5f;
 
     f32 w = 1.0f / area;
 
@@ -109,10 +142,12 @@ inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec
 
     Vector<f32, 3> zs = {p1.z(), p2.z(), p3.z()};
 
-    for (size_t y = box.top_left.y(); y < box.bottom_right.y(); ++y)
+    std::cerr << domain.top_left.y() << " " << domain.bottom_right.y() << std::endl;
+    std::cerr << domain.top_left.x() << " " << domain.bottom_right.x() << std::endl;
+    for (size_t y = domain.top_left.y(); y < domain.bottom_right.y(); ++y)
     {
         Vector<f32, 3> cw = weights;
-        for (size_t x = box.top_left.x(); x < box.bottom_right.x(); ++x)
+        for (size_t x = domain.top_left.x(); x < domain.bottom_right.x(); ++x)
         {
             if (cw.x() >= 0 && cw.y() >= 0 && cw.z() >= 0)
             {

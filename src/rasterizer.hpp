@@ -9,12 +9,6 @@ using Texture = Image<RGB<f32>>;
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
 
-struct BoundingBox
-{
-    Vector<size_t, 2> top_left;
-    Vector<size_t, 2> bottom_right;
-};
-
 [[nodiscard]] DepthBuffer create_depth_buffer(size_t width, size_t height);
 void reset_depth_buffer(DepthBuffer &buffer) noexcept;
 

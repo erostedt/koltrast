@@ -2,18 +2,20 @@
 #include "types.hpp"
 
 #include <cmath>
+#include <concepts>
 
-[[nodiscard]] constexpr inline size_t floor_to_size(f32 x) noexcept
+template <std::floating_point T> [[nodiscard]] constexpr inline size_t floor_to_size(T x) noexcept
 {
     return static_cast<size_t>(std::floor(x));
 }
 
-[[nodiscard]] constexpr inline size_t ceil_to_size(f32 x) noexcept
+template <std::floating_point T> [[nodiscard]] constexpr inline size_t ceil_to_size(T x) noexcept
 {
     return static_cast<size_t>(std::ceil(x));
 }
 
-[[nodiscard]] constexpr inline f32 edge_function(Vec4f p1, Vec4f p2, Vec4f p3) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline T edge_function(const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3) noexcept
 {
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }

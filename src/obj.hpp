@@ -1,4 +1,5 @@
 #pragma once
+#include <concepts>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -14,22 +15,22 @@ struct Face
     size_t normal_indices[3] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
 };
 
-struct Mesh
+template <std::floating_point T> struct Mesh
 {
-    std::vector<Vec3f> vertices{};
-    std::vector<Vec2f> texture_coordinates{};
-    std::vector<Vec3f> normals{};
+    std::vector<Vec3<T>> vertices{};
+    std::vector<Vec2<T>> texture_coordinates{};
+    std::vector<Vec3<T>> normals{};
     std::vector<Face> faces{};
 };
 
-inline Mesh load_obj(const std::filesystem::path &path)
+template <std::floating_point T> inline Mesh<T> load_obj(const std::filesystem::path &path)
 {
     CHECK(std::filesystem::exists(path));
     CHECK(path.extension() == ".obj");
 
     std::ifstream file(path);
     CHECK(file && file.is_open());
-    Mesh mesh{};
+    Mesh<T> mesh{};
 
     std::string line;
     while (std::getline(file, line))

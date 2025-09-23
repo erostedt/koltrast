@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <concepts>
 #include <execution>
 #include <limits>
 #include <vector>
@@ -12,54 +13,52 @@
 
 template <typename T> struct BoundingBox
 {
-    Vector<T, 2> top_left;
-    Vector<T, 2> bottom_right;
+    Vec2<T> top_left;
+    Vec2<T> bottom_right;
+
+    [[nodiscard]] constexpr inline bool is_empty() const noexcept
+    {
+        return top_left.x() >= bottom_right.x() || top_left.y() >= bottom_right.y();
+    }
 };
 
-[[nodiscard]] constexpr inline bool is_empty(const BoundingBox<f32> &bb) noexcept
-{
-    return bb.top_left.x() >= bb.bottom_right.x() || bb.top_left.y() >= bb.bottom_right.y();
-}
-
-[[nodiscard]] constexpr inline BoundingBox<f32> bounding_box(const Vec4f &p1, const Vec4f &p2, const Vec4f &p3) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline BoundingBox<T> bounding_box(const Vec4<T> &p1, const Vec4<T> &p2,
+                                                           const Vec4<T> &p3) noexcept
 {
     using namespace std;
-    f32 left = min(min(p1.x(), p2.x()), p3.x());
-    f32 top = min(min(p1.y(), p2.y()), p3.y());
-    f32 right = max(max(p1.x(), p2.x()), p3.x());
-    f32 bottom = max(max(p1.y(), p2.y()), p3.y());
+    T left = min(min(p1.x(), p2.x()), p3.x());
+    T top = min(min(p1.y(), p2.y()), p3.y());
+    T right = max(max(p1.x(), p2.x()), p3.x());
+    T bottom = max(max(p1.y(), p2.y()), p3.y());
     return {{left, top}, {right, bottom}};
 }
 
-template <typename T> [[nodiscard]] constexpr inline BoundingBox<f32> bounding_box(const Image<T> &image) noexcept
-{
-    return {{0.0f, 0.0f}, {(f32)image.width(), (f32)image.height()}};
-}
-
-[[nodiscard]] constexpr inline BoundingBox<f32> intersect(const BoundingBox<f32> &bb1,
-                                                          const BoundingBox<f32> &bb2) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline BoundingBox<T> intersect(const BoundingBox<T> &bb1, const BoundingBox<T> &bb2) noexcept
 {
     using namespace std;
-    f32 l = max(bb1.top_left.x(), bb2.top_left.x());
-    f32 r = min(bb1.bottom_right.x(), bb2.bottom_right.x());
+    T l = max(bb1.top_left.x(), bb2.top_left.x());
+    T r = min(bb1.bottom_right.x(), bb2.bottom_right.x());
 
-    f32 t = max(bb1.top_left.y(), bb2.top_left.y());
-    f32 b = min(bb1.bottom_right.y(), bb2.bottom_right.y());
+    T t = max(bb1.top_left.y(), bb2.top_left.y());
+    T b = min(bb1.bottom_right.y(), bb2.bottom_right.y());
     return {{l, t}, {r, b}};
 }
 
-[[nodiscard]] constexpr inline bool out_of_z_bounds(const Vec4f &point) noexcept
+template <std::floating_point T> [[nodiscard]] constexpr inline bool out_of_z_bounds(const Vec4<T> &point) noexcept
 {
-    return point.z() < 0.0f || point.z() > 1.0f;
+    return point.z() < T{0} || point.z() > T{1};
 }
 
-[[nodiscard]] constexpr inline BoundingBox<size_t> iteration_domain(const BoundingBox<f32> &bb) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline BoundingBox<size_t> iteration_domain(const BoundingBox<T> &bb) noexcept
 {
     using namespace std;
     return {
         {
-            floor_to_size(max(bb.top_left.x(), 0.0f)),
-            floor_to_size(max(bb.top_left.y(), 0.0f)),
+            floor_to_size(max(bb.top_left.x(), T{0})),
+            floor_to_size(max(bb.top_left.y(), T{0})),
         },
         {
             ceil_to_size(bb.bottom_right.x()),
@@ -68,13 +67,14 @@ template <typename T> [[nodiscard]] constexpr inline BoundingBox<f32> bounding_b
     };
 }
 
-constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1, const Vec4f &p2, const Vec4f &p3,
-                                         const BoundingBox<f32> &bounds, DepthBuffer &depth_buffer,
+template <std::floating_point T>
+constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3,
+                                         const BoundingBox<T> &bounds, DepthBuffer &depth_buffer,
                                          IndexBuffer &index_buffer) noexcept
 {
     // Backface
-    f32 tol = 1e-6f;
-    f32 area = edge_function(p1, p2, p3);
+    T tol = T(1e-6);
+    T area = edge_function(p1, p2, p3);
     if (area <= tol)
     {
         return;
@@ -88,48 +88,48 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4f &p1,
     const auto box = bounding_box(p1, p2, p3);
     const auto intersection = intersect(box, bounds);
 
-    if (is_empty(intersection))
+    if (intersection.is_empty())
     {
         return;
     }
 
     const auto domain = iteration_domain(intersection);
 
-    const Vec4f p = {(f32)domain.top_left.x() + 0.5f, (f32)domain.top_left.y() + 0.5f, 0.0f, 0.0f};
+    const Vec4<T> p = {(T)domain.top_left.x() + T{0.5}, (T)domain.top_left.y() + T{0.5}, 0.0f, 0.0f};
 
-    f32 w = 1.0f / area;
+    T w = T{1.0} / area;
 
-    Vec3f weights = {
+    Vec3<T> weights = {
         edge_function(p2, p3, p),
         edge_function(p3, p1, p),
         edge_function(p1, p2, p),
     };
 
-    Vec3f dx = {
+    Vec3<T> dx = {
         p3.y() - p2.y(),
         p1.y() - p3.y(),
         p2.y() - p1.y(),
     };
 
-    Vec3f dy = {
+    Vec3<T> dy = {
         p2.x() - p3.x(),
         p3.x() - p1.x(),
         p1.x() - p2.x(),
     };
 
-    Vec3f zs = {p1.z(), p2.z(), p3.z()};
+    Vec3<T> zs = {p1.z(), p2.z(), p3.z()};
 
     for (size_t y = domain.top_left.y(); y < domain.bottom_right.y(); ++y)
     {
-        Vec3f cw = weights;
+        Vec3<T> cw = weights;
         for (size_t x = domain.top_left.x(); x < domain.bottom_right.x(); ++x)
         {
             if (cw.x() >= 0 && cw.y() >= 0 && cw.z() >= 0)
             {
-                Vec3f lambdas = cw * w;
+                Vec3<T> lambdas = cw * w;
 
-                f32 z = lambdas.dot(zs);
-                if (z >= 0.0f && z <= 1.0f && z < depth_buffer[x, y])
+                T z = lambdas.dot(zs);
+                if (z >= T{0} && z <= T{1} && z < depth_buffer[x, y])
                 {
                     depth_buffer[x, y] = z;
                     index_buffer[x, y] = triangle_index;

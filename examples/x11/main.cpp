@@ -7,7 +7,6 @@
 #include <iostream>
 
 #include "camera.hpp"
-#include "check.hpp"
 #include "counting_iterator.hpp"
 #include "light.hpp"
 #include "matrix.hpp"
@@ -98,11 +97,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    const auto mesh = load_obj(argv[1]);
+    const auto mesh = load_obj<f32>(argv[1]);
     const auto texture = load_texture(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
-    const Vector<f32, 3> camera_position = {0.0f, 0.0f, 2.0f};
+    const Vec3f camera_position = {0.0f, 0.0f, 2.0f};
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
@@ -112,9 +111,9 @@ int main(int argc, char **argv)
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
-    std::vector<Vector<f32, 4>> world_vertices;
-    std::vector<Vector<f32, 3>> world_normals;
-    std::vector<Vector<f32, 4>> screen_vertices;
+    std::vector<Vec4f> world_vertices;
+    std::vector<Vec3f> world_normals;
+    std::vector<Vec4f> screen_vertices;
     size_t degrees = 0;
     while (!window.should_close)
     {

@@ -1,37 +1,39 @@
 #include "camera.hpp"
 #include "types.hpp"
+#include <concepts>
 
-struct PointLight
+template <std::floating_point T> struct PointLight
 {
-    Vec3f position;
-    RGB<f32> color;
-    f32 specular;
+    Vec3<T> position;
+    RGB<T> color;
+    T specular;
 };
 
-struct DirectionalLight
+template <std::floating_point T> struct DirectionalLight
 {
-    Vec3f direction;
-    RGB<f32> color;
-    f32 specular;
+    Vec3<T> direction;
+    RGB<T> color;
+    T specular;
 };
 
-[[nodiscard]] constexpr inline RGB<f32> directional_light(const Vec3f &world_position, const Vec3f &world_normal,
-                                                          const Vec3f &camera_position, f32 object_shininess,
-                                                          const Vec3f &light_direction, const RGB<f32> &light_color,
-                                                          f32 specular) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline RGB<T> directional_light(const Vec3<T> &world_position, const Vec3<T> &world_normal,
+                                                        const Vec3<T> &camera_position, T object_shininess,
+                                                        const Vec3<T> &light_direction, const RGB<T> &light_color,
+                                                        T specular) noexcept
 {
-    const Vec3f norm = *world_normal.normalized();
-    const Vec3f view_direction = *(camera_position - world_position).normalized();
+    const Vec3<T> norm = *world_normal.normalized();
+    const Vec3<T> view_direction = *(camera_position - world_position).normalized();
 
     // Diffuse
-    const float diffuse = std::max(norm.dot(light_direction), 0.0f);
-    const RGB<f32> diffuse_color = {diffuse * light_color.r, diffuse * light_color.g, diffuse * light_color.b};
+    const T diffuse = std::max(norm.dot(light_direction), T{0});
+    const RGB<T> diffuse_color = {diffuse * light_color.r, diffuse * light_color.g, diffuse * light_color.b};
 
     // Specular
-    const Vec3f reflection_direction = *(norm * (2.0f * norm.dot(light_direction)) - light_direction).normalized();
-    const float spec = std::pow(std::max(view_direction.dot(reflection_direction), 0.0f), object_shininess);
-    const RGB<f32> specular_color = {specular * spec * light_color.r, specular * spec * light_color.g,
-                                     specular * spec * light_color.b};
+    const Vec3<T> reflection_direction = *(norm * (T{2} * norm.dot(light_direction)) - light_direction).normalized();
+    const T spec = std::pow(std::max(view_direction.dot(reflection_direction), T{0}), object_shininess);
+    const RGB<T> specular_color = {specular * spec * light_color.r, specular * spec * light_color.g,
+                                   specular * spec * light_color.b};
 
     return {
         (diffuse_color.r + specular_color.r),
@@ -40,18 +42,20 @@ struct DirectionalLight
     };
 }
 
-[[nodiscard]] constexpr inline RGB<f32> sample_light(const Vec3f &world_position, const Vec3f &world_normal,
-                                                     const Vec3f &camera_position, f32 object_shininess,
-                                                     const PointLight &pl) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline RGB<T> sample_light(const Vec3<T> &world_position, const Vec3<T> &world_normal,
+                                                   const Vec3<T> &camera_position, T object_shininess,
+                                                   const PointLight<T> &pl) noexcept
 {
-    const Vec3f light_direction = *(pl.position - world_position).normalized();
+    const Vec3<T> light_direction = *(pl.position - world_position).normalized();
     return directional_light(world_position, world_normal, camera_position, object_shininess, light_direction, pl.color,
                              pl.specular);
 }
 
-[[nodiscard]] constexpr inline RGB<f32> sample_light(const Vec3f &world_position, const Vec3f &world_normal,
-                                                     const Vec3f &camera_position, f32 object_shininess,
-                                                     const DirectionalLight &dl) noexcept
+template <std::floating_point T>
+[[nodiscard]] constexpr inline RGB<T> sample_light(const Vec3<T> &world_position, const Vec3<T> &world_normal,
+                                                   const Vec3<T> &camera_position, T object_shininess,
+                                                   const DirectionalLight<T> &dl) noexcept
 {
     return directional_light(world_position, world_normal, camera_position, object_shininess, dl.direction, dl.color,
                              dl.specular);

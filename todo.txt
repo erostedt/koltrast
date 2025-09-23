@@ -1,8 +1,6 @@
 Phong
 Scene
-
+Use model_index and triangle_index for indexbuffer
 Fix missing floating_point templates
 Skybox
 AA
-Simd?
-

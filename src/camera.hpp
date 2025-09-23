@@ -1,7 +1,6 @@
 #pragma once
 
 #include "matrix.hpp"
-#include "types.hpp"
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -17,24 +16,6 @@ template <typename T> struct RGB
 };
 
 template <typename T> const RGB<T> BLACK = {T{0}, T{0}, T{0}};
-
-inline RGB<f32> convert(RGB<u8> rgb)
-{
-    return {
-        (f32)rgb.r / 255.0f,
-        (f32)rgb.g / 255.0f,
-        (f32)rgb.b / 255.0f,
-    };
-}
-
-inline RGB<u8> convert(RGB<f32> rgb)
-{
-    return {
-        (u8)(rgb.r * 255.0f),
-        (u8)(rgb.g * 255.0f),
-        (u8)(rgb.b * 255.0f),
-    };
-}
 
 struct Resolution
 {

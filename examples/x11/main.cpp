@@ -10,7 +10,6 @@
 #include "check.hpp"
 #include "counting_iterator.hpp"
 #include "light.hpp"
-#include "math.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"

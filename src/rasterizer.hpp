@@ -151,7 +151,7 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
 }
 
 template <std::floating_point T>
-constexpr inline void _rasterize_triangles(const std::vector<Vec4f> &screen_vertices, const BoundingBox<f32> &bounds,
+constexpr inline void _rasterize_triangles(const std::vector<Vec4<T>> &screen_vertices, const BoundingBox<T> &bounds,
                                            DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     for (size_t i = 0; i < screen_vertices.size(); i += 3)
@@ -164,8 +164,8 @@ constexpr inline void _rasterize_triangles(const std::vector<Vec4f> &screen_vert
 }
 
 template <std::floating_point T>
-constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
-                                           const BoundingBox<f32> &bounds, DepthBuffer<T> &depth_buffer,
+constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
+                                           const BoundingBox<T> &bounds, DepthBuffer<T> &depth_buffer,
                                            IndexBuffer &index_buffer) noexcept
 {
     for (size_t i = 0; i < faces.size(); ++i)
@@ -178,19 +178,19 @@ constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const
     }
 }
 
-template <size_t Rows, size_t Cols>
-constexpr inline Matrix<BoundingBox<f32>, Rows, Cols> make_grid(const Resolution &resolution) noexcept
+template <std::floating_point T, size_t Rows, size_t Cols>
+constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &resolution) noexcept
 {
     using namespace std;
-    Matrix<BoundingBox<f32>, Rows, Cols> grid;
+    Matrix<BoundingBox<T>, Rows, Cols> grid;
     for (size_t y = 0; y < Rows; ++y)
     {
         for (size_t x = 0; x < Cols; ++x)
         {
-            f32 sx = (f32)x * (f32)resolution.width / (f32)Cols;
-            f32 sy = (f32)y * (f32)resolution.height / (f32)Rows;
-            f32 ex = (f32)(x + 1) * (f32)resolution.width / (f32)Cols;
-            f32 ey = (f32)(y + 1) * (f32)resolution.height / (f32)Rows;
+            T sx = (T)x * (T)resolution.width / (T)Cols;
+            T sy = (T)y * (T)resolution.height / (T)Rows;
+            T ex = (T)(x + 1) * (T)resolution.width / (T)Cols;
+            T ey = (T)(y + 1) * (T)resolution.height / (T)Rows;
             grid[x, y] = {{sx, sy}, {ex, ey}};
         }
     }
@@ -202,7 +202,7 @@ constexpr inline Matrix<BoundingBox<f32>, Rows, Cols> make_grid(const Resolution
 template <std::floating_point T> constexpr inline void reset_depth_buffer(DepthBuffer<T> &buffer) noexcept
 {
     using namespace std;
-    fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
+    fill(begin(buffer), end(buffer), numeric_limits<T>::infinity());
 }
 template <std::floating_point T> [[nodiscard]] inline DepthBuffer<T> create_depth_buffer(size_t width, size_t height)
 {
@@ -225,7 +225,7 @@ constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
 }
 
 template <std::floating_point T>
-inline void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer<T> &depth_buffer,
+inline void rasterize_triangles(const std::vector<Vec4<T>> &screen_vertices, DepthBuffer<T> &depth_buffer,
                                 IndexBuffer &index_buffer) noexcept
 {
     CHECK(screen_vertices.size() % 3 == 0);
@@ -233,22 +233,22 @@ inline void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, Depth
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
-    const auto grid = make_grid<4, 4>({depth_buffer.width(), depth_buffer.height()});
-    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<f32> &bounds) {
+    const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
+    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         _rasterize_triangles(screen_vertices, bounds, depth_buffer, index_buffer);
     });
 }
 
 template <std::floating_point T>
-inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
+inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                                 DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
-    const auto grid = make_grid<4, 4>({depth_buffer.width(), depth_buffer.height()});
-    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<f32> &bounds) {
+    const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
+    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);
     });
 }

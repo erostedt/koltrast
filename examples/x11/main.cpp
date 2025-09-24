@@ -1,6 +1,7 @@
 #include <X11/Xlib.h>
 #include <chrono>
 #include <cmath>
+#include <concepts>
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
@@ -44,18 +45,19 @@ class PrintFps
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> ns;
 };
 
-void apply_lighting(ColorImage<f32> &image, const Vec3f &camera_position, const std::vector<Face> &faces,
-                    const std::vector<Vec4f> &screen_vertices, const std::vector<Vec4f> &world_vertices,
-                    const std::vector<Vec3f> &world_normals, const IndexBuffer &index_buffer)
+template <std::floating_point T>
+void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const std::vector<Face> &faces,
+                    const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
+                    const std::vector<Vec3<T>> &world_normals, const IndexBuffer &index_buffer)
 {
     PointLight point_light{
-        .position = {1.0f, 0.0f, 0.0f},
-        .color = {0.0f, 1.0f, 0.0f},
-        .specular = 0.5f,
+        .position = {T{1}, T{0}, T{0}},
+        .color = {T{0}, T{1}, T{0}},
+        .specular = T(0.5),
     };
 
-    f32 ambient = 0.1f;
-    f32 shininess = 8.0f;
+    T ambient = T(0.1);
+    T shininess = T(8);
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
         size_t x = i % index_buffer.width();
@@ -76,13 +78,13 @@ void apply_lighting(ColorImage<f32> &image, const Vec3f &camera_position, const 
             const auto wn2 = world_normals[face.normal_indices[1]];
             const auto wn3 = world_normals[face.normal_indices[2]];
 
-            const auto bary = barycentric({(f32)x + 0.5f, (f32)y + 0.5f}, sv1, sv2, sv3);
+            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
             const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
             const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
 
-            const RGB<f32> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
+            const RGB<T> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
 
-            const RGB<f32> object_color = image[x, y];
+            const RGB<T> object_color = image[x, y];
             image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
                            (ambient + light.b) * object_color.b};
         }

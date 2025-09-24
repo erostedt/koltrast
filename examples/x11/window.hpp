@@ -5,6 +5,7 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <bit>
+#include <concepts>
 #include <cstring>
 #include <vector>
 
@@ -138,7 +139,7 @@ class DrawFrame
         XCopyArea(display, pixmap, window.window, gc, 0, 0, rect.width, rect.height, 0, 0);
     }
 
-    void blit(const Image<RGB<f32>> &image)
+    template <std::floating_point T> void blit(const Image<RGB<T>> &image)
     {
         using namespace std;
 
@@ -152,10 +153,10 @@ class DrawFrame
         const auto gshift = countr_zero(gmask);
         const auto bshift = countr_zero(bmask);
 
-        const auto pack_pixel = [&](const RGB<f32> &color) {
-            const auto r = std::clamp(color.r * 255.0f, 0.0f, 255.0f);
-            const auto g = std::clamp(color.g * 255.0f, 0.0f, 255.0f);
-            const auto b = std::clamp(color.b * 255.0f, 0.0f, 255.0f);
+        const auto pack_pixel = [&](const RGB<T> &color) {
+            const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
+            const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
+            const auto b = std::clamp(color.b * T{255}, T{0}, T{255});
             return ((u32)r << rshift & rmask) | ((u32)g << gshift & gmask) | ((u32)b << bshift & bmask);
         };
 

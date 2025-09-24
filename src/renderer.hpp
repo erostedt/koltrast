@@ -1,8 +1,8 @@
 #pragma once
 
 #include "counting_iterator.hpp"
-#include "math.hpp"
 #include "rasterizer.hpp"
+#include "texture.hpp"
 
 constexpr inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &texture) noexcept
 {

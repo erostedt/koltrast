@@ -33,6 +33,7 @@ template <std::floating_point T> struct Camera
     Degrees vertical_field_of_view;
     T near_plane;
     T far_plane;
+    T focal_length = T{1};
 };
 
 template <typename T> class Image

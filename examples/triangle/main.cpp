@@ -30,7 +30,7 @@ int main()
     project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
     rasterize_triangles(screen_vertices, depth_buffer, index_buffer);
     render_triangles(image, {{1.0f, 0, 0}, {0, 1.0f, 0}}, index_buffer);

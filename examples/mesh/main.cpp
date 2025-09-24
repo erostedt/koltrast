@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     const auto vp = proj * view;
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
     std::vector<Vec4f> world_vertices;

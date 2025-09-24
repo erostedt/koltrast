@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);

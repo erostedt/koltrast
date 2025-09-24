@@ -17,8 +17,7 @@
 #include "types.hpp"
 
 template <std::floating_point T> using ColorImage = Image<RGB<T>>;
-
-using DepthBuffer = Image<f32>;
+template <std::floating_point T> using DepthBuffer = Image<T>;
 using IndexBuffer = Image<size_t>;
 
 template <typename T> struct BoundingBox
@@ -79,7 +78,7 @@ template <std::floating_point T>
 
 template <std::floating_point T>
 constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3,
-                                         const BoundingBox<T> &bounds, DepthBuffer &depth_buffer,
+                                         const BoundingBox<T> &bounds, DepthBuffer<T> &depth_buffer,
                                          IndexBuffer &index_buffer) noexcept
 {
     // Backface
@@ -151,8 +150,9 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
     }
 }
 
+template <std::floating_point T>
 constexpr inline void _rasterize_triangles(const std::vector<Vec4f> &screen_vertices, const BoundingBox<f32> &bounds,
-                                           DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+                                           DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     for (size_t i = 0; i < screen_vertices.size(); i += 3)
     {
@@ -163,8 +163,9 @@ constexpr inline void _rasterize_triangles(const std::vector<Vec4f> &screen_vert
     }
 }
 
+template <std::floating_point T>
 constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
-                                           const BoundingBox<f32> &bounds, DepthBuffer &depth_buffer,
+                                           const BoundingBox<f32> &bounds, DepthBuffer<T> &depth_buffer,
                                            IndexBuffer &index_buffer) noexcept
 {
     for (size_t i = 0; i < faces.size(); ++i)
@@ -198,27 +199,23 @@ constexpr inline Matrix<BoundingBox<f32>, Rows, Cols> make_grid(const Resolution
 }
 
 /// ------------------------------------------ Public API ------------------------------------------
-
-constexpr inline void reset_depth_buffer(DepthBuffer &buffer) noexcept
+template <std::floating_point T> constexpr inline void reset_depth_buffer(DepthBuffer<T> &buffer) noexcept
 {
     using namespace std;
     fill(begin(buffer), end(buffer), numeric_limits<f32>::infinity());
 }
-
-[[nodiscard]] inline DepthBuffer create_depth_buffer(size_t width, size_t height)
+template <std::floating_point T> [[nodiscard]] inline DepthBuffer<T> create_depth_buffer(size_t width, size_t height)
 {
     using namespace std;
-    DepthBuffer buffer(width, height);
+    DepthBuffer<T> buffer(width, height);
     reset_depth_buffer(buffer);
     return buffer;
 }
-
 constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
 {
     using namespace std;
     fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
 }
-
 [[nodiscard]] inline IndexBuffer create_index_buffer(size_t width, size_t height)
 {
     using namespace std;
@@ -227,7 +224,8 @@ constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
     return buffer;
 }
 
-inline void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer &depth_buffer,
+template <std::floating_point T>
+inline void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, DepthBuffer<T> &depth_buffer,
                                 IndexBuffer &index_buffer) noexcept
 {
     CHECK(screen_vertices.size() % 3 == 0);
@@ -241,8 +239,9 @@ inline void rasterize_triangles(const std::vector<Vec4f> &screen_vertices, Depth
     });
 }
 
+template <std::floating_point T>
 inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4f> &screen_vertices,
-                                DepthBuffer &depth_buffer, IndexBuffer &index_buffer) noexcept
+                                DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());

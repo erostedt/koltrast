@@ -93,6 +93,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    // TODO: (ecrt) Remove hardcoded path
     const auto path = fs::path("/home/eric/Downloads/qwantani_sunset_puresky_1k.hdr");
     const auto cubemap = load_cubemap<f32>(path);
 

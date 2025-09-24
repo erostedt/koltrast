@@ -10,6 +10,7 @@ namespace fs = std::filesystem;
 
 int main()
 {
+    // TODO: (ecrt) Remove hardcoded path
     const auto path = fs::path("/home/eric/Downloads/qwantani_sunset_puresky_1k.hdr");
     const auto cubemap = load_cubemap<f32>(path);
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};

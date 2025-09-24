@@ -1,5 +1,6 @@
 #pragma once
 
+#include "check.hpp"
 #include "matrix.hpp"
 #include "types.hpp"
 #include <cmath>
@@ -16,7 +17,7 @@ template <typename T> struct RGB
     T b;
 };
 
-template <typename T> const RGB<T> BLACK = {T{0}, T{0}, T{0}};
+template <typename T> const RGB<T> BLACK = {0};
 
 struct Resolution
 {

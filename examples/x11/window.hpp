@@ -1,6 +1,6 @@
 #pragma once
 #include "camera.hpp"
-#include "matrix.hpp"
+#include "check.hpp"
 #include "types.hpp"
 #include <X11/X.h>
 #include <X11/Xlib.h>

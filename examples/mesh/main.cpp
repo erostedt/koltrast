@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     }
 
     const auto mesh = load_obj<f32>(argv[1]);
-    const auto texture = load_texture(argv[2]);
+    const auto texture = load_texture<f32>(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
     const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {1.0f, 1.0f, 1.0f});

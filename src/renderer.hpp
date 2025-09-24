@@ -4,7 +4,7 @@
 #include "rasterizer.hpp"
 #include "texture.hpp"
 
-constexpr inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &texture) noexcept
+constexpr inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture<f32> &texture) noexcept
 {
     f32 x = std::clamp(uv.x() * (f32)(texture.width() - 1), 0.0f, (f32)(texture.width() - 1));
     f32 y = std::clamp(uv.y() * (f32)(texture.height() - 1), 0.0f, (f32)(texture.height() - 1));
@@ -28,7 +28,7 @@ constexpr inline RGB<f32> sample_bilinear(const Vec2f &uv, const Texture &textur
     return {red, green, blue};
 }
 
-constexpr inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture &texture) noexcept
+constexpr inline RGB<f32> sample_nearest_neighbor(const Vec2f &uv, const Texture<f32> &texture) noexcept
 {
     size_t tx = floor_to_size(uv.x() * (f32)(texture.width() - 1));
     size_t ty = floor_to_size(uv.y() * (f32)(texture.height() - 1));
@@ -83,7 +83,7 @@ inline void render_triangles(ColorImage &image, const std::vector<RGB<f32>> &col
 
 inline void render_triangles(ColorImage &image, const std::vector<Face> &faces,
                              const std::vector<Vec4f> &screen_vertices, const std::vector<Vec2f> &texture_coordinates,
-                             const Texture &texture, const IndexBuffer &index_buffer) noexcept
+                             const Texture<f32> &texture, const IndexBuffer &index_buffer) noexcept
 {
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {

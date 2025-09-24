@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "camera.hpp"
+#include "check.hpp"
 #include "math.hpp"
 #include "matrix.hpp"
 #include "types.hpp"

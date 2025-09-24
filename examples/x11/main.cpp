@@ -44,7 +44,7 @@ class PrintFps
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> ns;
 };
 
-void apply_lighting(ColorImage &image, const Vec3f &camera_position, const std::vector<Face> &faces,
+void apply_lighting(ColorImage<f32> &image, const Vec3f &camera_position, const std::vector<Face> &faces,
                     const std::vector<Vec4f> &screen_vertices, const std::vector<Vec4f> &world_vertices,
                     const std::vector<Vec3f> &world_normals, const IndexBuffer &index_buffer)
 {
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
-    ColorImage image(camera.resolution.width, camera.resolution.height);
+    ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 

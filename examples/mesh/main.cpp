@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
     const auto vp = proj * view;
 
-    ColorImage image(camera.resolution.width, camera.resolution.height);
+    ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 

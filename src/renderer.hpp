@@ -65,7 +65,7 @@ constexpr inline Vec2f interpolate_uv(const Vec3f &bary, const Vec4f &v1, const 
     return uv_interp / invw_interp;
 }
 
-inline void render_triangles(ColorImage &image, const std::vector<RGB<f32>> &colors,
+inline void render_triangles(ColorImage<f32> &image, const std::vector<RGB<f32>> &colors,
                              const IndexBuffer &index_buffer) noexcept
 {
     using namespace std;
@@ -81,7 +81,7 @@ inline void render_triangles(ColorImage &image, const std::vector<RGB<f32>> &col
     });
 }
 
-inline void render_triangles(ColorImage &image, const std::vector<Face> &faces,
+inline void render_triangles(ColorImage<f32> &image, const std::vector<Face> &faces,
                              const std::vector<Vec4f> &screen_vertices, const std::vector<Vec2f> &texture_coordinates,
                              const Texture<f32> &texture, const IndexBuffer &index_buffer) noexcept
 {

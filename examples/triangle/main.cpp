@@ -29,7 +29,7 @@ int main()
     std::vector<Vec4f> screen_vertices;
     project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
 
-    ColorImage image(camera.resolution.width, camera.resolution.height);
+    ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
     rasterize_triangles(screen_vertices, depth_buffer, index_buffer);

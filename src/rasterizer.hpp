@@ -16,7 +16,8 @@
 #include "matrix.hpp"
 #include "types.hpp"
 
-using ColorImage = Image<RGB<f32>>;
+template <std::floating_point T> using ColorImage = Image<RGB<T>>;
+
 using DepthBuffer = Image<f32>;
 using IndexBuffer = Image<size_t>;
 
@@ -253,16 +254,16 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
     });
 }
 
-inline void dump_ppm(const ColorImage &image, std::ostream &stream)
+template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)
 {
     using std::ranges::for_each;
     stream << "P3\n";
     stream << image.width() << ' ' << image.height() << "\n255\n";
 
     const auto write_pixel = [&stream](const auto &color) {
-        const auto r = std::clamp(color.r * 255.0f, 0.0f, 255.0f);
-        const auto g = std::clamp(color.g * 255.0f, 0.0f, 255.0f);
-        const auto b = std::clamp(color.b * 255.0f, 0.0f, 255.0f);
+        const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
+        const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
+        const auto b = std::clamp(color.b * T{255}, T{0}, T{255});
         stream << (int)r << ' ' << (int)g << ' ' << (int)b << '\n';
     };
 

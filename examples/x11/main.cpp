@@ -1,15 +1,12 @@
 #include <X11/Xlib.h>
 #include <chrono>
 #include <cmath>
-#include <concepts>
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
 
 #include "camera.hpp"
-#include "counting_iterator.hpp"
-#include "light.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
@@ -25,71 +22,51 @@
 #include <iostream>
 #include <vector>
 
+using namespace std::chrono;
+
 class PrintFps
 {
-
   public:
-    PrintFps()
+    PrintFps(size_t precision = 3) : prec(precision)
     {
-        ns = std::chrono::steady_clock::now();
+        ns = steady_clock::now();
     }
 
     ~PrintFps()
     {
-        const auto diff = std::chrono::steady_clock::now() - ns;
+        const auto diff = steady_clock::now() - ns;
         const auto fps = 1.0 / (1e-9 * (f64)diff.count());
-        std::cout << std::setprecision(3) << fps << std::endl;
+        std::cout << std::setprecision((i32)prec) << fps << std::endl;
     }
 
   private:
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> ns;
+    size_t prec;
+    steady_clock::time_point ns;
 };
 
-template <std::floating_point T>
-void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const std::vector<Face> &faces,
-                    const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
-                    const std::vector<Vec3<T>> &world_normals, const IndexBuffer &index_buffer)
+class LimitFps
 {
-    PointLight point_light{
-        .position = {T{1}, T{0}, T{0}},
-        .color = {T{0}, T{1}, T{0}},
-        .specular = T(0.5),
-    };
+  public:
+    LimitFps(f64 target_fps)
+    {
+        target_elapsed_ns = round<nanoseconds>(duration<f64>(1.0 / target_fps));
+        start_ns = steady_clock::now();
+    }
 
-    T ambient = T(0.1);
-    T shininess = T(8);
-    using namespace std;
-    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
-        size_t x = i % index_buffer.width();
-        size_t y = i / index_buffer.width();
-        size_t index = index_buffer[x, y];
-        if (index != std::numeric_limits<size_t>::max())
+    ~LimitFps()
+    {
+        const auto elapsed_ns = steady_clock::now() - start_ns;
+        const auto diff = target_elapsed_ns - elapsed_ns;
+        if (diff > 0ns)
         {
-            const auto &face = faces[index];
-            const auto sv1 = screen_vertices[face.vertex_indices[0]];
-            const auto sv2 = screen_vertices[face.vertex_indices[1]];
-            const auto sv3 = screen_vertices[face.vertex_indices[2]];
-
-            const auto wv1 = world_vertices[face.vertex_indices[0]];
-            const auto wv2 = world_vertices[face.vertex_indices[1]];
-            const auto wv3 = world_vertices[face.vertex_indices[2]];
-
-            const auto wn1 = world_normals[face.normal_indices[0]];
-            const auto wn2 = world_normals[face.normal_indices[1]];
-            const auto wn3 = world_normals[face.normal_indices[2]];
-
-            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
-            const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
-            const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
-
-            const RGB<T> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
-
-            const RGB<T> object_color = image[x, y];
-            image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
-                           (ambient + light.b) * object_color.b};
+            std::this_thread::sleep_for(diff);
         }
-    });
-}
+    }
+
+  private:
+    nanoseconds target_elapsed_ns;
+    steady_clock::time_point start_ns;
+};
 
 int main(int argc, char **argv)
 {
@@ -119,7 +96,7 @@ int main(int argc, char **argv)
     size_t degrees = 0;
     while (!window.should_close)
     {
-        PrintFps fps;
+        LimitFps limitfps(60.0);
         auto events = window.poll_events();
         for (auto &event : events)
         {

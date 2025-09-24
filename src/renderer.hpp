@@ -124,13 +124,13 @@ void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const 
                     const std::vector<Vec3<T>> &world_normals, const IndexBuffer &index_buffer)
 {
     PointLight<T> point_light{
-        .position = {T{1}, T{0}, T{0}},
-        .color = {T{0}, T{1}, T{0}},
-        .specular = T(0.5),
+        .position = {T(0), T(1), T(2)},
+        .color = {T{1}, T{1}, T{1}},
+        .specular = T(0.8),
     };
 
-    T ambient = T(0.1);
-    T shininess = T(8);
+    T ambient = T(0.3);
+    T shininess = T(16);
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
         size_t x = i % index_buffer.width();
@@ -164,7 +164,7 @@ void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const 
     });
 }
 
-template <std::floating_point T> RGB<T> sample_cubemap(Vec3<T> direction, const Image<RGB<T>> &cubemap)
+template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)
 {
     T phi = std::atan2(direction.z(), direction.x());
     T theta = std::acos(direction.y());

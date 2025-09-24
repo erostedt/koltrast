@@ -2,11 +2,13 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <execution>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
 
 #include "camera.hpp"
+#include "counting_iterator.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
@@ -68,6 +70,21 @@ class LimitFps
     steady_clock::time_point start_ns;
 };
 
+void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Vec3f &camera_position,
+                      const ViewPort<f32> &view_port)
+{
+    std::for_each(std::execution::par_unseq, counting_iterator(0), counting_iterator(image.size()), [&](size_t i) {
+        size_t x = i % image.width();
+        size_t y = i / image.width();
+
+        const Vec3 pixel_center =
+            view_port.pixel_top_left + ((f32)x * view_port.pixel_delta_u) + ((f32)y * view_port.pixel_delta_v);
+        const Vec3 ray_origin = camera_position;
+        const Vec3 ray_direction = *(pixel_center - ray_origin).normalized();
+        image[x, y] = sample_cubemap(ray_direction, cubemap);
+    });
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -76,11 +93,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    const auto path = fs::path("/home/eric/Downloads/qwantani_sunset_puresky_1k.hdr");
+    const auto cubemap = load_cubemap<f32>(path);
+
     const auto mesh = load_obj<f32>(argv[1]);
     const auto texture = load_texture<f32>(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
-    const Vec3f camera_position = {0.0f, 0.0f, 2.0f};
+    const Vec3f camera_position = {0.0f, 0.5f, 2.0f};
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
 
@@ -96,6 +116,7 @@ int main(int argc, char **argv)
     size_t degrees = 0;
     while (!window.should_close)
     {
+        PrintFps print_fps;
         LimitFps limitfps(60.0);
         auto events = window.poll_events();
         for (auto &event : events)
@@ -112,8 +133,9 @@ int main(int argc, char **argv)
 
         reset_depth_buffer(depth_buffer);
         reset_index_buffer(index_buffer);
-        std::fill(image.begin(), image.end(), BLACK<f32>);
 
+        const auto v = view_port(camera, camera_position, view);
+        clear_background(image, cubemap, camera_position, v);
         DrawFrame frame(window);
 
         model_to_world(mesh.vertices, mesh.normals, model, world_vertices, world_normals);

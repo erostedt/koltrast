@@ -1,5 +1,4 @@
 Phong
 Scene
 Use model_index and triangle_index for indexbuffer
-Skybox
 AA

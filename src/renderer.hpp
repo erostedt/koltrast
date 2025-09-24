@@ -163,3 +163,53 @@ void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const 
         }
     });
 }
+
+template <std::floating_point T> RGB<T> sample_cubemap(Vec3<T> direction, const Image<RGB<T>> &cubemap)
+{
+    T phi = std::atan2(direction.z(), direction.x());
+    T theta = std::acos(direction.y());
+
+    T pi = std::numbers::pi_v<f32>;
+    T u = (phi + pi) / (T{2} * pi);
+    T v = theta / pi;
+
+    // TODO: (ecrt) Use bilinear interpolation
+    size_t px = (size_t)(u * (T)(cubemap.width() - 1));
+    size_t py = (size_t)(v * (T)(cubemap.height() - 1));
+
+    return cubemap[px, py];
+}
+
+template <std::floating_point T> struct ViewPort
+{
+    Vec3<T> pixel_delta_u;
+    Vec3<T> pixel_delta_v;
+    Vec3<T> pixel_top_left;
+};
+
+template <std::floating_point T>
+ViewPort<T> view_port(const Camera<T> &camera, const Vec3<T> &position, const Mat4x4<T> &view)
+{
+    T aspect_ratio = (T)camera.resolution.width / (T)camera.resolution.height;
+
+    T angle = radians(camera.vertical_field_of_view);
+    T height = std::tan(angle / T{2});
+    T viewport_height = T{2} * height * camera.focal_length;
+    T viewport_width = viewport_height * aspect_ratio;
+
+    Vec3<T> right = {view[0, 0], view[0, 1], view[0, 2]};
+    Vec3<T> up = {view[1, 0], view[1, 1], view[1, 2]};
+    Vec3<T> forward = {view[2, 0], view[2, 1], view[2, 2]};
+
+    Vec3<T> viewport_u = viewport_width * right;
+    Vec3<T> viewport_v = -viewport_height * up;
+
+    Vec3<T> viewport_center = position - camera.focal_length * forward;
+    Vec3<T> viewport_upper_left = viewport_center - viewport_u / T{2} - viewport_v / T{2};
+
+    Vec3<T> pixel_delta_u = viewport_u / (T)camera.resolution.width;
+    Vec3<T> pixel_delta_v = viewport_v / (T)camera.resolution.height;
+
+    Vec3<T> pixel_top_left = viewport_upper_left + T(0.5) * (pixel_delta_u + pixel_delta_v);
+    return {pixel_delta_u, pixel_delta_v, pixel_top_left};
+}

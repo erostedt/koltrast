@@ -10,7 +10,7 @@
 
 namespace fs = std::filesystem;
 
-u8 *load_image(const fs::path &path, size_t &width, size_t &height, size_t &channels, size_t required_components)
+u8 *load_rgbu8_image(const fs::path &path, size_t &width, size_t &height, size_t &channels, size_t required_components)
 {
     CHECK(fs::exists(path));
     stbi_set_flip_vertically_on_load(1);
@@ -22,4 +22,23 @@ u8 *load_image(const fs::path &path, size_t &width, size_t &height, size_t &chan
     height = (size_t)h;
     channels = (size_t)c;
     return data;
+}
+
+f32 *load_rgbf_image(const fs::path &path, size_t &width, size_t &height, size_t &channels, size_t required_components)
+{
+    CHECK(fs::exists(path));
+    stbi_set_flip_vertically_on_load(1);
+    i32 w, h, c;
+    f32 *data = stbi_loadf(path.c_str(), &w, &h, &c, (i32)required_components);
+    CHECK(data != NULL);
+    CHECK(c == 3);
+    width = (size_t)w;
+    height = (size_t)h;
+    channels = (size_t)c;
+    return data;
+}
+
+void free_image(void *image)
+{
+    stbi_image_free(image);
 }

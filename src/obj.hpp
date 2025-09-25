@@ -4,7 +4,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "matrix.hpp"
+#include "check.hpp"
 #include "types.hpp"
 
 struct Face

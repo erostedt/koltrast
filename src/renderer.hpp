@@ -126,52 +126,6 @@ inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const s
     });
 }
 
-template <std::floating_point T>
-void apply_lighting(ColorImage<T> &image, const Vec3<T> &camera_position, const std::vector<Face> &faces,
-                    const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
-                    const std::vector<Vec3<T>> &world_normals, const IndexBuffer &index_buffer)
-{
-    PointLight<T> point_light{
-        .position = {T(0), T(1), T(2)},
-        .color = {T{1}, T{1}, T{1}},
-        .specular = T(0.8),
-    };
-
-    T ambient = T(0.3);
-    T shininess = T(16);
-    using namespace std;
-    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
-        size_t x = i % index_buffer.width();
-        size_t y = i / index_buffer.width();
-        size_t index = index_buffer[x, y];
-        if (index != std::numeric_limits<size_t>::max())
-        {
-            const auto &face = faces[index];
-            const auto sv1 = screen_vertices[face.vertex_indices[0]];
-            const auto sv2 = screen_vertices[face.vertex_indices[1]];
-            const auto sv3 = screen_vertices[face.vertex_indices[2]];
-
-            const auto wv1 = world_vertices[face.vertex_indices[0]];
-            const auto wv2 = world_vertices[face.vertex_indices[1]];
-            const auto wv3 = world_vertices[face.vertex_indices[2]];
-
-            const auto wn1 = world_normals[face.normal_indices[0]];
-            const auto wn2 = world_normals[face.normal_indices[1]];
-            const auto wn3 = world_normals[face.normal_indices[2]];
-
-            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
-            const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
-            const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
-
-            const RGB<T> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
-
-            const RGB<T> object_color = image[x, y];
-            image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
-                           (ambient + light.b) * object_color.b};
-        }
-    });
-}
-
 template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)
 {
     T phi = std::atan2(direction.z(), direction.x());

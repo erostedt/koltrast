@@ -9,6 +9,7 @@
 
 #include "camera.hpp"
 #include "counting_iterator.hpp"
+#include "light.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
@@ -115,6 +116,11 @@ int main(int argc, char **argv)
     std::vector<Vec3f> world_normals;
     std::vector<Vec4f> screen_vertices;
     size_t degrees = 0;
+
+    const Lights<f32> lights = {
+        .ambient = 0.3f,
+        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
+        .directional_lights = {}};
     while (!window.should_close)
     {
         PrintFps print_fps;
@@ -144,7 +150,7 @@ int main(int argc, char **argv)
         world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
         render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates,
-               camera_position, texture, index_buffer);
+               camera_position, lights, 16.0f, texture, index_buffer);
 
         frame.blit(image);
     }

@@ -76,17 +76,9 @@ template <std::floating_point T>
 inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                    const std::vector<Vec4<T>> &world_vertices, const std::vector<Vec3<T>> &world_normals,
                    const std::vector<Vec2<T>> &texture_coordinates, const Vec3<T> &camera_position,
-                   const Texture<T> &texture, const IndexBuffer &index_buffer) noexcept
+                   const Lights<T> &lights, T object_shininess, const Texture<T> &texture,
+                   const IndexBuffer &index_buffer) noexcept
 {
-
-    PointLight<T> point_light{
-        .position = {T(0), T(1), T(2)},
-        .color = {T{1}, T{1}, T{1}},
-        .specular = T(0.8),
-    };
-    T ambient = T(0.3);
-    T shininess = T(16);
-
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
         size_t x = i % index_buffer.width();
@@ -116,12 +108,10 @@ inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const s
             const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
             const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
 
-            // TODO: (eric) Make a loop and take multiple lights
-            const RGB<T> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
-
             const RGB<T> object_color = sample_bilinear(uv, texture);
-            image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
-                           (ambient + light.b) * object_color.b};
+            const RGB<T> light =
+                accumulate_light(lights, world_position, world_normal, camera_position, object_shininess);
+            image[x, y] = {light.r * object_color.r, light.g * object_color.g, light.b * object_color.b};
         }
     });
 }

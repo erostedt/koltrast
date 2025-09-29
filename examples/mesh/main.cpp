@@ -34,6 +34,11 @@ int main(int argc, char **argv)
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
     auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
+    const Lights<f32> lights = {
+        .ambient = 0.3f,
+        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
+        .directional_lights = {}};
+
     std::vector<Vec4f> world_vertices;
     std::vector<Vec3f> world_normals;
     model_to_world(mesh.vertices, model, world_vertices);
@@ -43,7 +48,7 @@ int main(int argc, char **argv)
     world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
     rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
     render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates, camera_position,
-           texture, index_buffer);
+           lights, 16.0f, texture, index_buffer);
 
     dump_ppm(image, std::cout);
 }

@@ -1,6 +1,2 @@
-Phong
 Scene
-Use model_index and triangle_index for indexbuffer
-Allow passing of vertex shader and pixel shader
-Add shader utility functions
 AA

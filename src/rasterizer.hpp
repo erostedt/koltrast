@@ -247,6 +247,7 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
+    // TODO: (eric) What if not divisable by 4?
     const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);

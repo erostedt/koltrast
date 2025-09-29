@@ -139,9 +139,9 @@ int main(int argc, char **argv)
         clear_background(image, cubemap, camera_position, v);
         DrawFrame frame(window);
 
-        model_to_world(mesh.vertices, mesh.normals, model, world_vertices, world_normals);
-
-        project_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
+        model_to_world(mesh.vertices, model, world_normals);
+        model_to_world(mesh.normals, model, world_normals);
+        world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
         render_triangles(image, mesh.faces, screen_vertices, mesh.texture_coordinates, texture, index_buffer);
         apply_lighting(image, camera_position, mesh.faces, screen_vertices, world_vertices, world_normals,

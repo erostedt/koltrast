@@ -160,23 +160,20 @@ constexpr inline void model_to_world(const std::vector<Vec3<T>> &model_vertices,
 }
 
 template <std::floating_point T>
-Vec4<T> project_to_screen(const Vec4<T> &world_point, const Mat4x4<T> &vp, const Resolution &res)
-{
-    const auto clip = vp * world_point;
-    CHECK(std::abs(clip.w()) > T(1e-6));
-    const Vec3<T> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
-    const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(res.width);
-    const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(res.height);
-
-    return {sx, sy, ndc.z(), clip.w()};
-}
-
-template <std::floating_point T>
 void project_to_screen(const std::vector<Vec4<T>> &world_vertices, const Mat4x4<T> &vp, const Resolution &resolution,
                        std::vector<Vec4<T>> &screen_vertices)
 {
     using namespace std;
+
+    auto project_single = [&](const Vec4<T> &world_point) -> Vec4<T> {
+        const auto clip = vp * world_point;
+        CHECK(abs(clip.w()) > T(1e-6));
+        const Vec3<T> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
+        const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(resolution.width);
+        const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
+        return {sx, sy, ndc.z(), clip.w()};
+    };
+
     screen_vertices.resize(world_vertices.size());
-    transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices),
-              [&](const Vec4<T> &vertex) { return project_to_screen(vertex, vp, resolution); });
+    transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices), project_single);
 }

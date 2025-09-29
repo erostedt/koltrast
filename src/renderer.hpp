@@ -73,23 +73,6 @@ constexpr inline Vec2<T> interpolate_uv(const Vec3<T> &bary, const Vec4<T> &v1, 
 }
 
 template <std::floating_point T>
-inline void render_triangles(ColorImage<T> &image, const std::vector<RGB<T>> &colors,
-                             const IndexBuffer &index_buffer) noexcept
-{
-    using namespace std;
-    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
-        size_t x = i % index_buffer.width();
-        size_t y = i / index_buffer.width();
-
-        size_t index = index_buffer[x, y];
-        if (index != numeric_limits<size_t>::max())
-        {
-            image[x, y] = colors[index];
-        }
-    });
-}
-
-template <std::floating_point T>
 inline void render_triangles(ColorImage<T> &image, const std::vector<Face> &faces,
                              const std::vector<Vec4<T>> &screen_vertices,
                              const std::vector<Vec2<T>> &texture_coordinates, const Texture<T> &texture,

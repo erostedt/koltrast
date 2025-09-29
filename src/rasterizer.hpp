@@ -225,21 +225,6 @@ constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
 }
 
 template <std::floating_point T>
-inline void rasterize_triangles(const std::vector<Vec4<T>> &screen_vertices, DepthBuffer<T> &depth_buffer,
-                                IndexBuffer &index_buffer) noexcept
-{
-    CHECK(screen_vertices.size() % 3 == 0);
-    CHECK(depth_buffer.width() == index_buffer.width());
-    CHECK(depth_buffer.height() == index_buffer.height());
-
-    using namespace std;
-    const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
-    for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
-        _rasterize_triangles(screen_vertices, bounds, depth_buffer, index_buffer);
-    });
-}
-
-template <std::floating_point T>
 inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                                 DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {

@@ -73,11 +73,20 @@ constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const Vec4<T> &v1, cons
 }
 
 template <std::floating_point T>
-inline void render_triangles(ColorImage<T> &image, const std::vector<Face> &faces,
-                             const std::vector<Vec4<T>> &screen_vertices,
-                             const std::vector<Vec2<T>> &texture_coordinates, const Texture<T> &texture,
-                             const IndexBuffer &index_buffer) noexcept
+inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
+                   const std::vector<Vec4<T>> &world_vertices, const std::vector<Vec3<T>> &world_normals,
+                   const std::vector<Vec2<T>> &texture_coordinates, const Vec3<T> &camera_position,
+                   const Texture<T> &texture, const IndexBuffer &index_buffer) noexcept
 {
+
+    PointLight<T> point_light{
+        .position = {T(0), T(1), T(2)},
+        .color = {T{1}, T{1}, T{1}},
+        .specular = T(0.8),
+    };
+    T ambient = T(0.3);
+    T shininess = T(16);
+
     using namespace std;
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
         size_t x = i % index_buffer.width();
@@ -86,17 +95,33 @@ inline void render_triangles(ColorImage<T> &image, const std::vector<Face> &face
         if (index != std::numeric_limits<size_t>::max())
         {
             const auto &face = faces[index];
-            const auto v1 = screen_vertices[face.vertex_indices[0]];
-            const auto v2 = screen_vertices[face.vertex_indices[1]];
-            const auto v3 = screen_vertices[face.vertex_indices[2]];
+            const auto sv1 = screen_vertices[face.vertex_indices[0]];
+            const auto sv2 = screen_vertices[face.vertex_indices[1]];
+            const auto sv3 = screen_vertices[face.vertex_indices[2]];
+
+            const auto wv1 = world_vertices[face.vertex_indices[0]];
+            const auto wv2 = world_vertices[face.vertex_indices[1]];
+            const auto wv3 = world_vertices[face.vertex_indices[2]];
+
+            const auto wn1 = world_normals[face.normal_indices[0]];
+            const auto wn2 = world_normals[face.normal_indices[1]];
+            const auto wn3 = world_normals[face.normal_indices[2]];
 
             const auto uv1 = texture_coordinates[face.texture_indices[0]];
             const auto uv2 = texture_coordinates[face.texture_indices[1]];
             const auto uv3 = texture_coordinates[face.texture_indices[2]];
 
-            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, v1, v2, v3);
-            const auto uv = texture_uv(bary, v1, v2, v3, uv1, uv2, uv3);
-            image[x, y] = sample_bilinear(uv, texture);
+            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
+            const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
+            const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
+            const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
+
+            // TODO: (eric) Make a loop and take multiple lights
+            const RGB<T> light = sample_light(world_position, world_normal, camera_position, shininess, point_light);
+
+            const RGB<T> object_color = sample_bilinear(uv, texture);
+            image[x, y] = {(ambient + light.r) * object_color.r, (ambient + light.g) * object_color.g,
+                           (ambient + light.b) * object_color.b};
         }
     });
 }

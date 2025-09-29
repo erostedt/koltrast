@@ -141,12 +141,6 @@ template <std::floating_point T>
 constexpr inline void model_to_world(const std::vector<Vec3<T>> &model_vertices, const Mat4x4<T> &model_matrix,
                                      std::vector<Vec4<T>> &world_vertices) noexcept
 {
-    Mat3x3<T> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
-                      model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
-                      model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
-
-    Mat3x3<T> normal_matrix = mat3.inverse().value().transposed();
-
     world_vertices.resize(model_vertices.size());
 
     using namespace std;

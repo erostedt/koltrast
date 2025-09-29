@@ -51,8 +51,8 @@ constexpr inline Vec3<T> barycentric(const Vec2<T> &at, const Vec4<T> &v1, const
 }
 
 template <std::floating_point T>
-constexpr inline Vec2<T> interpolate_uv(const Vec3<T> &bary, const Vec4<T> &v1, const Vec4<T> &v2, const Vec4<T> &v3,
-                                        const Vec2<T> &uv1, const Vec2<T> &uv2, const Vec2<T> &uv3) noexcept
+constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const Vec4<T> &v1, const Vec4<T> &v2, const Vec4<T> &v3,
+                                    const Vec2<T> &uv1, const Vec2<T> &uv2, const Vec2<T> &uv3) noexcept
 {
     T wa = v1.w();
     T wb = v2.w();
@@ -95,7 +95,7 @@ inline void render_triangles(ColorImage<T> &image, const std::vector<Face> &face
             const auto uv3 = texture_coordinates[face.texture_indices[2]];
 
             const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, v1, v2, v3);
-            const auto uv = interpolate_uv(bary, v1, v2, v3, uv1, uv2, uv3);
+            const auto uv = texture_uv(bary, v1, v2, v3, uv1, uv2, uv3);
             image[x, y] = sample_bilinear(uv, texture);
         }
     });

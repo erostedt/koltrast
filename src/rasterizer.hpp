@@ -76,6 +76,11 @@ template <std::floating_point T>
     };
 }
 
+template <std::floating_point T> constexpr inline bool inside_triangle(const Vec3<T> &bary) noexcept
+{
+    return bary.x() >= 0 && bary.y() >= 0 && bary.z() >= 0;
+}
+
 template <std::floating_point T>
 constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3,
                                          const BoundingBox<T> &bounds, DepthBuffer<T> &depth_buffer,
@@ -133,7 +138,7 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
         Vec3<T> cw = weights;
         for (size_t x = domain.top_left.x(); x < domain.bottom_right.x(); ++x)
         {
-            if (cw.x() >= 0 && cw.y() >= 0 && cw.z() >= 0)
+            if (inside_triangle(cw))
             {
                 Vec3<T> lambdas = cw * w;
 

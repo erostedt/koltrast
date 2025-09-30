@@ -17,6 +17,32 @@ template <typename T> struct RGB
     T b;
 };
 
+template <std::floating_point T> constexpr inline RGB<T> operator+(const RGB<T> &c1, const RGB<T> &c2) noexcept
+{
+    return {c1.r + c2.r, c1.g + c2.g, c1.b + c2.b};
+}
+
+template <std::floating_point T> constexpr inline RGB<T> operator*(const RGB<T> &c1, const RGB<T> &c2) noexcept
+{
+    return {c1.r * c2.r, c1.g * c2.g, c1.b * c2.b};
+}
+
+template <std::floating_point T> constexpr inline RGB<T> operator*(const RGB<T> &c, T s) noexcept
+{
+    return {c.r * s, c.g * s, c.b * s};
+}
+
+template <std::floating_point T> constexpr inline RGB<T> operator*(T s, const RGB<T> &c) noexcept
+{
+    return c * s;
+}
+
+template <std::floating_point T> constexpr inline RGB<T> operator/(const RGB<T> &c, T div) noexcept
+{
+    T s = T{1} / div;
+    return c * s;
+}
+
 template <typename T> const RGB<T> BLACK = {T{0}, T{0}, T{0}};
 
 struct Resolution

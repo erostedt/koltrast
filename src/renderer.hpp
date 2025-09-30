@@ -2,6 +2,7 @@
 
 #include "counting_iterator.hpp"
 #include "light.hpp"
+#include "math.hpp"
 #include "rasterizer.hpp"
 #include "texture.hpp"
 #include <concepts>
@@ -87,23 +88,23 @@ inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const s
         if (index != std::numeric_limits<size_t>::max())
         {
             const auto &face = faces[index];
-            const auto sv1 = screen_vertices[face.vertex_indices[0]];
-            const auto sv2 = screen_vertices[face.vertex_indices[1]];
-            const auto sv3 = screen_vertices[face.vertex_indices[2]];
+            const Vec4<T> sv1 = screen_vertices[face.vertex_indices[0]];
+            const Vec4<T> sv2 = screen_vertices[face.vertex_indices[1]];
+            const Vec4<T> sv3 = screen_vertices[face.vertex_indices[2]];
 
-            const auto wv1 = world_vertices[face.vertex_indices[0]];
-            const auto wv2 = world_vertices[face.vertex_indices[1]];
-            const auto wv3 = world_vertices[face.vertex_indices[2]];
+            const Vec4<T> wv1 = world_vertices[face.vertex_indices[0]];
+            const Vec4<T> wv2 = world_vertices[face.vertex_indices[1]];
+            const Vec4<T> wv3 = world_vertices[face.vertex_indices[2]];
 
-            const auto wn1 = world_normals[face.normal_indices[0]];
-            const auto wn2 = world_normals[face.normal_indices[1]];
-            const auto wn3 = world_normals[face.normal_indices[2]];
+            const Vec3<T> wn1 = world_normals[face.normal_indices[0]];
+            const Vec3<T> wn2 = world_normals[face.normal_indices[1]];
+            const Vec3<T> wn3 = world_normals[face.normal_indices[2]];
 
-            const auto uv1 = texture_coordinates[face.texture_indices[0]];
-            const auto uv2 = texture_coordinates[face.texture_indices[1]];
-            const auto uv3 = texture_coordinates[face.texture_indices[2]];
+            const Vec2<T> uv1 = texture_coordinates[face.texture_indices[0]];
+            const Vec2<T> uv2 = texture_coordinates[face.texture_indices[1]];
+            const Vec2<T> uv3 = texture_coordinates[face.texture_indices[2]];
 
-            const auto bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
+            const Vec3<T> bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
             const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
             const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
             const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
@@ -111,7 +112,8 @@ inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const s
             const RGB<T> object_color = sample_bilinear(uv, texture);
             const RGB<T> light =
                 accumulate_light(lights, world_position, world_normal, camera_position, object_shininess);
-            image[x, y] = {light.r * object_color.r, light.g * object_color.g, light.b * object_color.b};
+
+            image[x, y] = light * object_color;
         }
     });
 }

@@ -127,11 +127,7 @@ template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction,
     T u = (phi + pi) / (T{2} * pi);
     T v = theta / pi;
 
-    // TODO: (ecrt) Use bilinear interpolation
-    size_t px = (size_t)(u * (T)(cubemap.width() - 1));
-    size_t py = (size_t)(v * (T)(cubemap.height() - 1));
-
-    return cubemap[px, py];
+    return sample_bilinear({u, v}, cubemap);
 }
 
 template <std::floating_point T> struct ViewPort

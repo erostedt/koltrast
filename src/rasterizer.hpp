@@ -196,6 +196,8 @@ constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &
             T sy = (T)y * (T)resolution.height / (T)Rows;
             T ex = (T)(x + 1) * (T)resolution.width / (T)Cols;
             T ey = (T)(y + 1) * (T)resolution.height / (T)Rows;
+            T ex = min((T)(x + 1) * (T)resolution.width / (T)Cols, resolution.width - 1);
+            T ey = min((T)(y + 1) * (T)resolution.height / (T)Rows, resolution.height - 1);
             grid[x, y] = {{sx, sy}, {ex, ey}};
         }
     }
@@ -237,7 +239,6 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
-    // TODO: (eric) What if not divisable by 4?
     const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);

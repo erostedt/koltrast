@@ -229,7 +229,7 @@ constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
     return buffer;
 }
 
-template <std::floating_point T, size_t RowTiles, size_t ColTiles = RowTiles>
+template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles>
     requires(RowTiles > 0) && (ColTiles > 0)
 inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                                 DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept

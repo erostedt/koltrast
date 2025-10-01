@@ -194,8 +194,6 @@ constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &
         {
             T sx = (T)x * (T)resolution.width / (T)Cols;
             T sy = (T)y * (T)resolution.height / (T)Rows;
-            T ex = (T)(x + 1) * (T)resolution.width / (T)Cols;
-            T ey = (T)(y + 1) * (T)resolution.height / (T)Rows;
             T ex = min((T)(x + 1) * (T)resolution.width / (T)Cols, resolution.width - 1);
             T ey = min((T)(y + 1) * (T)resolution.height / (T)Rows, resolution.height - 1);
             grid[x, y] = {{sx, sy}, {ex, ey}};
@@ -231,7 +229,8 @@ constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
     return buffer;
 }
 
-template <std::floating_point T>
+template <std::floating_point T, size_t RowTiles, size_t ColTiles = RowTiles>
+    requires(RowTiles > 0) && (ColTiles > 0)
 inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                                 DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
@@ -239,7 +238,7 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
-    const auto grid = make_grid<T, 4, 4>({depth_buffer.width(), depth_buffer.height()});
+    const auto grid = make_grid<T, RowTiles, ColTiles>({depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);
     });

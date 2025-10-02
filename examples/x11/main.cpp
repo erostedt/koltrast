@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     const auto mesh = load_obj<f32>(argv[1]);
     const auto texture = load_texture<f32>(argv[2]);
 
-    const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
+    const Camera<f32> camera = {{640, 480}, 60, 0.2f, 100.0f};
     const Vec3f camera_position = {0.0f, 0.5f, 2.0f};
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
         }
 
         degrees = (degrees + 1) % 360;
-        const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
+        const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {2.0f, 2.0f, 2.0f});
         const auto vp = proj * view;
 
         reset_depth_buffer(depth_buffer);
@@ -151,6 +151,7 @@ int main(int argc, char **argv)
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
         render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates,
                camera_position, lights, 16.0f, texture, index_buffer);
+        linear_to_srgb(image);
 
         frame.blit(image);
     }

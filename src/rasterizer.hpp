@@ -4,9 +4,11 @@
 #include "types.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <concepts>
 #include <execution>
+#include <iterator>
 #include <limits>
 #include <vector>
 
@@ -17,8 +19,34 @@
 #include "types.hpp"
 
 template <std::floating_point T> using ColorImage = Image<RGB<T>>;
-template <std::floating_point T> using DepthBuffer = Image<T>;
-using IndexBuffer = Image<size_t>;
+
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+    requires(AARows > 0) && (AACols > 0)
+using DepthBuffer = Image<Matrix<T, AARows, AACols>>;
+
+template <size_t AARows = 1, size_t AACols = AARows>
+    requires(AARows > 0) && (AACols > 0)
+using IndexBuffer = Image<Matrix<size_t, AARows, AACols>>;
+
+template <std::floating_point T, size_t Rows, size_t Cols = Rows>
+constexpr Matrix<Vec2<T>, Rows, Cols> make_aa_grid()
+    requires(Rows > 0) && (Cols > 0)
+{
+    Matrix<Vec2<T>, Rows, Cols> offsets;
+
+    T x_delta = T{1} / Cols;
+    T y_delta = T{1} / Rows;
+    for (size_t y = 0; y < Rows; ++y)
+    {
+        for (size_t x = 0; x < Cols; ++x)
+        {
+            T fx = (T(x) + T(0.5)) * x_delta - T(0.5);
+            T fy = (T(y) + T(0.5)) * y_delta - T(0.5);
+            offsets[x, y] = {fx, fy};
+        }
+    }
+    return offsets;
+}
 
 template <typename T> struct BoundingBox
 {
@@ -81,10 +109,39 @@ template <std::floating_point T> constexpr inline bool inside_triangle(const Vec
     return bary.x() >= 0 && bary.y() >= 0 && bary.z() >= 0;
 }
 
-template <std::floating_point T>
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+    requires(AARows > 0) && (AACols > 0)
+constexpr inline void rasterize_pixel(size_t triangle_index, const Vec3<T> &weights, const T w, const Vec3<T> &dx,
+                                      const Vec3<T> &dy, const Vec3<T> &zs, Matrix<T, AARows, AACols> &depth_cell,
+                                      Matrix<size_t, AARows, AACols> &index_cell) noexcept
+{
+    static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
+
+    for (size_t y = 0; y < AARows; ++y)
+    {
+        for (size_t x = 0; x < AACols; ++x)
+        {
+            const Vec2<T> offset = offsets[x, y];
+            const Vec3<T> offsetted = weights + dx * offset.x() + dy * offset.y();
+            if (inside_triangle(offsetted))
+            {
+                Vec3<T> lambdas = offsetted * w;
+
+                T z = lambdas.dot(zs);
+                if (z >= T{0} && z <= T{1} && z < depth_cell[x, y])
+                {
+                    depth_cell[x, y] = z;
+                    index_cell[x, y] = triangle_index;
+                }
+            }
+        }
+    }
+}
+
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3,
-                                         const BoundingBox<T> &bounds, DepthBuffer<T> &depth_buffer,
-                                         IndexBuffer &index_buffer) noexcept
+                                         const BoundingBox<T> &bounds, DepthBuffer<T, AARows, AACols> &depth_buffer,
+                                         IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     // Backface
     T tol = T(1e-6);
@@ -138,26 +195,17 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
         Vec3<T> cw = weights;
         for (size_t x = domain.top_left.x(); x < domain.bottom_right.x(); ++x)
         {
-            if (inside_triangle(cw))
-            {
-                Vec3<T> lambdas = cw * w;
-
-                T z = lambdas.dot(zs);
-                if (z >= T{0} && z <= T{1} && z < depth_buffer[x, y])
-                {
-                    depth_buffer[x, y] = z;
-                    index_buffer[x, y] = triangle_index;
-                }
-            }
+            rasterize_pixel(triangle_index, cw, w, dx, dy, zs, depth_buffer[x, y], index_buffer[x, y]);
             cw += dx;
         }
         weights += dy;
     }
 }
 
-template <std::floating_point T>
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void _rasterize_triangles(const std::vector<Vec4<T>> &screen_vertices, const BoundingBox<T> &bounds,
-                                           DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
+                                           DepthBuffer<T, AARows, AACols> &depth_buffer,
+                                           IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     for (size_t i = 0; i < screen_vertices.size(); i += 3)
     {
@@ -168,10 +216,10 @@ constexpr inline void _rasterize_triangles(const std::vector<Vec4<T>> &screen_ve
     }
 }
 
-template <std::floating_point T>
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
-                                           const BoundingBox<T> &bounds, DepthBuffer<T> &depth_buffer,
-                                           IndexBuffer &index_buffer) noexcept
+                                           const BoundingBox<T> &bounds, DepthBuffer<T, AARows, AACols> &depth_buffer,
+                                           IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     for (size_t i = 0; i < faces.size(); ++i)
     {
@@ -194,8 +242,8 @@ constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &
         {
             T sx = (T)x * (T)resolution.width / (T)Cols;
             T sy = (T)y * (T)resolution.height / (T)Rows;
-            T ex = min((T)(x + 1) * (T)resolution.width / (T)Cols, resolution.width - 1);
-            T ey = min((T)(y + 1) * (T)resolution.height / (T)Rows, resolution.height - 1);
+            T ex = min((T)(x + 1) * (T)resolution.width / (T)Cols, (T)resolution.width - T{1});
+            T ey = min((T)(y + 1) * (T)resolution.height / (T)Rows, (T)resolution.height - T{1});
             grid[x, y] = {{sx, sy}, {ex, ey}};
         }
     }
@@ -204,35 +252,46 @@ constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &
 }
 
 /// ------------------------------------------ Public API ------------------------------------------
-template <std::floating_point T> constexpr inline void reset_depth_buffer(DepthBuffer<T> &buffer) noexcept
+
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+constexpr inline void reset_depth_buffer(DepthBuffer<T, AARows, AACols> &buffer) noexcept
 {
     using namespace std;
-    fill(begin(buffer), end(buffer), numeric_limits<T>::infinity());
+    for_each(begin(buffer), end(buffer),
+             [](Matrix<T, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<T>::infinity()); });
 }
-template <std::floating_point T> [[nodiscard]] inline DepthBuffer<T> create_depth_buffer(size_t width, size_t height)
+
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+[[nodiscard]] inline DepthBuffer<T, AARows, AACols> create_depth_buffer(size_t width, size_t height)
 {
     using namespace std;
-    DepthBuffer<T> buffer(width, height);
+    DepthBuffer<T, AARows, AACols> buffer(width, height);
     reset_depth_buffer(buffer);
     return buffer;
 }
-constexpr inline void reset_index_buffer(IndexBuffer &buffer) noexcept
+
+template <size_t AARows = 1, size_t AACols = AARows>
+constexpr inline void reset_index_buffer(IndexBuffer<AARows, AACols> &buffer) noexcept
 {
     using namespace std;
-    fill(begin(buffer), end(buffer), numeric_limits<size_t>::max());
+    for_each(begin(buffer), end(buffer),
+             [](Matrix<size_t, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<size_t>::max()); });
 }
-[[nodiscard]] inline IndexBuffer create_index_buffer(size_t width, size_t height)
+template <size_t AARows = 1, size_t AACols = AARows>
+[[nodiscard]] inline IndexBuffer<AARows, AACols> create_index_buffer(size_t width, size_t height)
 {
     using namespace std;
-    IndexBuffer buffer(width, height);
+    IndexBuffer<AARows, AACols> buffer(width, height);
     reset_index_buffer(buffer);
     return buffer;
 }
 
-template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles>
+template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles, size_t AARows = 1,
+          size_t AACols = AARows>
     requires(RowTiles > 0) && (ColTiles > 0)
 inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
-                                DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
+                                DepthBuffer<T, AARows, AACols> &depth_buffer,
+                                IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());

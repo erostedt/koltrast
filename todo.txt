@@ -1,3 +1,4 @@
-Scene
-Material
 Pixelshader
+RGBA
+Store bary in indexbuffer?
+Final cleanup

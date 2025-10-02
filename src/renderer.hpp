@@ -7,6 +7,28 @@
 #include "texture.hpp"
 #include <concepts>
 
+template <std::floating_point T> constexpr inline RGB<T> srgb_to_linear(const RGB<T> &c) noexcept
+{
+    auto convert = [](T v) {
+        if (v <= T(0.04045))
+            return v / T(12.92);
+        else
+            return std::pow((v + T(0.055)) / T(1.055), T(2.4));
+    };
+    return {convert(c.r), convert(c.g), convert(c.b)};
+}
+
+template <std::floating_point T> constexpr inline RGB<T> linear_to_srgb(const RGB<T> &c) noexcept
+{
+    auto convert = [](T v) {
+        if (v <= T(0.0031308))
+            return v * T(12.92);
+        else
+            return T(1.055) * std::pow(v, T(1.0 / 2.4)) - T(0.055);
+    };
+    return {convert(c.r), convert(c.g), convert(c.b)};
+}
+
 template <std::floating_point T>
 constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Texture<T> &texture) noexcept
 {
@@ -18,10 +40,10 @@ constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Texture<T> &tex
     size_t fy = floor_to_size(y);
     size_t cy = ceil_to_size(y);
 
-    RGB<T> a = texture[fx, fy];
-    RGB<T> b = texture[cx, fy];
-    RGB<T> c = texture[fx, cy];
-    RGB<T> d = texture[cx, cy];
+    RGB<T> a = srgb_to_linear(texture[fx, fy]);
+    RGB<T> b = srgb_to_linear(texture[cx, fy]);
+    RGB<T> c = srgb_to_linear(texture[fx, cy]);
+    RGB<T> d = srgb_to_linear(texture[cx, cy]);
 
     T s = x - (T)fx;
     T t = y - (T)fy;
@@ -37,7 +59,7 @@ constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Texture
 {
     size_t tx = floor_to_size(uv.x() * (T)(texture.width() - 1));
     size_t ty = floor_to_size(uv.y() * (T)(texture.height() - 1));
-    return texture[tx, ty];
+    return srgb_to_linear(texture[tx, ty]);
 }
 
 template <std::floating_point T>
@@ -73,49 +95,81 @@ constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const Vec4<T> &v1, cons
     return uv_interp / invw_interp;
 }
 
-template <std::floating_point T>
-inline void render(ColorImage<T> &image, const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
-                   const std::vector<Vec4<T>> &world_vertices, const std::vector<Vec3<T>> &world_normals,
-                   const std::vector<Vec2<T>> &texture_coordinates, const Vec3<T> &camera_position,
-                   const Lights<T> &lights, T object_shininess, const Texture<T> &texture,
-                   const IndexBuffer &index_buffer) noexcept
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
+                   const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
+                   const std::vector<Vec3<T>> &world_normals, const std::vector<Vec2<T>> &texture_coordinates,
+                   const Vec3<T> &camera_position, const Lights<T> &lights, T object_shininess,
+                   const Texture<T> &texture, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     using namespace std;
+    static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
+
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
         size_t x = i % index_buffer.width();
         size_t y = i / index_buffer.width();
-        size_t index = index_buffer[x, y];
-        if (index != std::numeric_limits<size_t>::max())
+        const Matrix<size_t, AARows, AACols> &indicies = index_buffer[x, y];
+        if (all_of(begin(indicies), end(indicies), [](size_t idx) { return idx == numeric_limits<size_t>::max(); }))
         {
-            const auto &face = faces[index];
-            const Vec4<T> sv1 = screen_vertices[face.vertex_indices[0]];
-            const Vec4<T> sv2 = screen_vertices[face.vertex_indices[1]];
-            const Vec4<T> sv3 = screen_vertices[face.vertex_indices[2]];
-
-            const Vec4<T> wv1 = world_vertices[face.vertex_indices[0]];
-            const Vec4<T> wv2 = world_vertices[face.vertex_indices[1]];
-            const Vec4<T> wv3 = world_vertices[face.vertex_indices[2]];
-
-            const Vec3<T> wn1 = world_normals[face.normal_indices[0]];
-            const Vec3<T> wn2 = world_normals[face.normal_indices[1]];
-            const Vec3<T> wn3 = world_normals[face.normal_indices[2]];
-
-            const Vec2<T> uv1 = texture_coordinates[face.texture_indices[0]];
-            const Vec2<T> uv2 = texture_coordinates[face.texture_indices[1]];
-            const Vec2<T> uv3 = texture_coordinates[face.texture_indices[2]];
-
-            const Vec3<T> bary = barycentric({(T)x + T(0.5), (T)y + T(0.5)}, sv1, sv2, sv3);
-            const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
-            const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
-            const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
-
-            const RGB<T> object_color = sample_bilinear(uv, texture);
-            const RGB<T> light =
-                accumulate_light(lights, world_position, world_normal, camera_position, object_shininess);
-
-            image[x, y] = light * object_color;
+            return;
         }
+
+        const T sample_contribution = T{1} / (AARows * AACols);
+
+        size_t coverage = 0;
+        RGB<T> color = BLACK<T>;
+        for (size_t iy = 0; iy < AARows; ++iy)
+        {
+            for (size_t ix = 0; ix < AACols; ++ix)
+            {
+                size_t index = indicies[ix, iy];
+                if (index != numeric_limits<size_t>::max())
+                {
+                    const Face &face = faces[index];
+                    const Vec4<T> sv1 = screen_vertices[face.vertex_indices[0]];
+                    const Vec4<T> sv2 = screen_vertices[face.vertex_indices[1]];
+                    const Vec4<T> sv3 = screen_vertices[face.vertex_indices[2]];
+
+                    const Vec4<T> wv1 = world_vertices[face.vertex_indices[0]];
+                    const Vec4<T> wv2 = world_vertices[face.vertex_indices[1]];
+                    const Vec4<T> wv3 = world_vertices[face.vertex_indices[2]];
+
+                    const Vec3<T> wn1 = world_normals[face.normal_indices[0]];
+                    const Vec3<T> wn2 = world_normals[face.normal_indices[1]];
+                    const Vec3<T> wn3 = world_normals[face.normal_indices[2]];
+
+                    const Vec2<T> uv1 = texture_coordinates[face.texture_indices[0]];
+                    const Vec2<T> uv2 = texture_coordinates[face.texture_indices[1]];
+                    const Vec2<T> uv3 = texture_coordinates[face.texture_indices[2]];
+
+                    const Vec2<T> offset = offsets[ix, iy];
+
+                    T px = (T)x + T(0.5) + offset.x();
+                    T py = (T)y + T(0.5) + offset.y();
+
+                    const Vec3<T> bary = barycentric({px, py}, sv1, sv2, sv3);
+                    const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
+                    const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
+                    const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
+
+                    const RGB<T> object_color = sample_bilinear(uv, texture);
+                    const RGB<T> light =
+                        accumulate_light(lights, world_position, world_normal, camera_position, object_shininess);
+                    color = color + sample_contribution * light * object_color;
+                    ++coverage;
+                }
+            }
+        }
+        T coverage_fraction = (T)coverage * sample_contribution;
+        linear_image[x, y] = color + (T{1} - coverage_fraction) * linear_image[x, y];
     });
+}
+
+template <std::floating_point T> inline void linear_to_srgb(ColorImage<T> &image) noexcept
+{
+    using namespace std;
+    std::transform(execution::par, begin(image), end(image), begin(image),
+                   [](const RGB<T> &color) { return linear_to_srgb<T>(color); });
 }
 
 template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)

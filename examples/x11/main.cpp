@@ -121,6 +121,9 @@ int main(int argc, char **argv)
         .ambient = 0.3f,
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {}};
+
+    const DefaultShader<f32> shader = {camera_position, lights, texture, 16.0f};
+
     while (!window.should_close)
     {
         PrintFps print_fps;
@@ -149,8 +152,8 @@ int main(int argc, char **argv)
         model_to_world(mesh.normals, model, world_normals);
         world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
         rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
-        render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates,
-               camera_position, lights, 16.0f, texture, index_buffer);
+        render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates, shader,
+               index_buffer);
         linear_to_srgb(image);
 
         frame.blit(image);

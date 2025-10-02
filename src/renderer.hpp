@@ -7,6 +7,18 @@
 #include "texture.hpp"
 #include <concepts>
 
+template <std::floating_point T> struct Fragment
+{
+    Vec3<T> world_position;
+    Vec3<T> world_normal;
+    Vec2<T> uv;
+};
+
+template <typename F, typename T>
+concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<T> &fragment) {
+    { f(fragment) } -> std::same_as<RGB<T>>;
+};
+
 template <std::floating_point T> constexpr inline RGB<T> srgb_to_linear(const RGB<T> &c) noexcept
 {
     auto convert = [](T v) {
@@ -95,12 +107,27 @@ constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const Vec4<T> &v1, cons
     return uv_interp / invw_interp;
 }
 
-template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
+template <std::floating_point T> struct DefaultShader
+{
+    Vec3<T> camera_position;
+    Lights<T> lights;
+    Texture<T> texture;
+    T object_shininess;
+
+    [[nodiscard]] constexpr inline RGB<T> operator()(const Fragment<T> &fragment) const
+    {
+        const RGB<T> object_color = sample_bilinear(fragment.uv, texture);
+        const RGB<T> light =
+            accumulate_light(lights, fragment.world_position, fragment.world_normal, camera_position, object_shininess);
+        return light * object_color;
+    }
+};
+
+template <std::floating_point T, FragmentShader<T> Shader, size_t AARows = 1, size_t AACols = AARows>
 inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                    const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
                    const std::vector<Vec3<T>> &world_normals, const std::vector<Vec2<T>> &texture_coordinates,
-                   const Vec3<T> &camera_position, const Lights<T> &lights, T object_shininess,
-                   const Texture<T> &texture, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
+                   const Shader &fragment_shader, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     using namespace std;
     static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
@@ -148,14 +175,11 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                     T py = (T)y + T(0.5) + offset.y();
 
                     const Vec3<T> bary = barycentric({px, py}, sv1, sv2, sv3);
-                    const auto world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
-                    const auto world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
-                    const auto uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
+                    const Vec3<T> world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
+                    const Vec3<T> world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
+                    const Vec2<T> uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
 
-                    const RGB<T> object_color = sample_bilinear(uv, texture);
-                    const RGB<T> light =
-                        accumulate_light(lights, world_position, world_normal, camera_position, object_shininess);
-                    color = color + sample_contribution * light * object_color;
+                    color = color + sample_contribution * fragment_shader({world_position, world_normal, uv});
                     ++coverage;
                 }
             }

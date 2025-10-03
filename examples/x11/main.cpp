@@ -9,6 +9,7 @@
 
 #include "camera.hpp"
 #include "counting_iterator.hpp"
+#include "image.hpp"
 #include "light.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
@@ -98,7 +99,7 @@ int main(int argc, char **argv)
     const auto cubemap = load_cubemap<f32>(path);
 
     const auto mesh = load_obj<f32>(argv[1]);
-    const auto texture = load_texture<f32>(argv[2]);
+    const auto texture = load_texture(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
     const Vec3f camera_position = {0.0f, 0.5f, 2.0f};

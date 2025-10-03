@@ -1,7 +1,4 @@
 #pragma once
-#include "camera.hpp"
-#include "obj.hpp"
-#include "types.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,13 +9,12 @@
 #include <limits>
 #include <vector>
 
-#include "camera.hpp"
 #include "check.hpp"
+#include "image.hpp"
 #include "math.hpp"
 #include "matrix.hpp"
+#include "obj.hpp"
 #include "types.hpp"
-
-template <std::floating_point T> using ColorImage = Image<RGB<T>>;
 
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
     requires(AARows > 0) && (AACols > 0)

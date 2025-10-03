@@ -1,55 +1,15 @@
 #pragma once
 
 #include "check.hpp"
+#include "image.hpp"
 #include "matrix.hpp"
 #include "types.hpp"
+
 #include <cmath>
 #include <concepts>
-#include <cstddef>
 #include <execution>
 #include <numbers>
 #include <vector>
-
-template <typename T> struct RGB
-{
-    T r;
-    T g;
-    T b;
-};
-
-template <std::floating_point T> constexpr inline RGB<T> operator+(const RGB<T> &c1, const RGB<T> &c2) noexcept
-{
-    return {c1.r + c2.r, c1.g + c2.g, c1.b + c2.b};
-}
-
-template <std::floating_point T> constexpr inline RGB<T> operator*(const RGB<T> &c1, const RGB<T> &c2) noexcept
-{
-    return {c1.r * c2.r, c1.g * c2.g, c1.b * c2.b};
-}
-
-template <std::floating_point T> constexpr inline RGB<T> operator*(const RGB<T> &c, T s) noexcept
-{
-    return {c.r * s, c.g * s, c.b * s};
-}
-
-template <std::floating_point T> constexpr inline RGB<T> operator*(T s, const RGB<T> &c) noexcept
-{
-    return c * s;
-}
-
-template <std::floating_point T> constexpr inline RGB<T> operator/(const RGB<T> &c, T div) noexcept
-{
-    T s = T{1} / div;
-    return c * s;
-}
-
-template <typename T> const RGB<T> BLACK = {T{0}, T{0}, T{0}};
-
-struct Resolution
-{
-    size_t width = 640;
-    size_t height = 480;
-};
 
 template <std::floating_point T> struct Camera
 {
@@ -60,81 +20,6 @@ template <std::floating_point T> struct Camera
     T near_plane;
     T far_plane;
     T focal_length = T{1};
-};
-
-template <typename T> class Image
-{
-    using iterator = std::vector<T>::iterator;
-    using const_iterator = std::vector<T>::const_iterator;
-
-  public:
-    Image(size_t width, size_t height) : res(width, height), pixels(width * height)
-    {
-    }
-
-    [[nodiscard]] constexpr inline size_t width() const noexcept
-    {
-        return res.width;
-    }
-
-    [[nodiscard]] constexpr inline size_t height() const noexcept
-    {
-        return res.height;
-    }
-
-    [[nodiscard]] constexpr inline size_t size() const noexcept
-    {
-        return width() * height();
-    }
-
-    [[nodiscard]] constexpr inline const Resolution &resolution() const noexcept
-    {
-        return resolution;
-    }
-
-    [[nodiscard]] constexpr inline T &operator[](size_t i) noexcept
-    {
-        return pixels[i];
-    }
-
-    [[nodiscard]] constexpr inline T &operator[](size_t x, size_t y) noexcept
-    {
-        return operator[](y * width() + x);
-    }
-
-    [[nodiscard]] constexpr inline const T &operator[](size_t i) const
-    {
-        return pixels[i];
-    }
-
-    [[nodiscard]] constexpr inline const T &operator[](size_t x, size_t y) const noexcept
-    {
-        return operator[](y * width() + x);
-    }
-
-    [[nodiscard]] constexpr inline iterator begin() noexcept
-    {
-        return std::begin(pixels);
-    }
-
-    [[nodiscard]] constexpr inline iterator end() noexcept
-    {
-        return std::end(pixels);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator begin() const noexcept
-    {
-        return std::cbegin(pixels);
-    }
-
-    [[nodiscard]] constexpr inline const_iterator end() const noexcept
-    {
-        return std::cend(pixels);
-    }
-
-  private:
-    Resolution res;
-    std::vector<T> pixels;
 };
 
 template <std::floating_point T> [[nodiscard]] constexpr inline T radians(T degrees) noexcept

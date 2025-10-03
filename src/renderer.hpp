@@ -1,11 +1,14 @@
 #pragma once
 
+#include <concepts>
+
+#include "camera.hpp"
 #include "counting_iterator.hpp"
+#include "image.hpp"
 #include "light.hpp"
 #include "math.hpp"
 #include "rasterizer.hpp"
 #include "texture.hpp"
-#include <concepts>
 
 template <std::floating_point T> struct Fragment
 {
@@ -19,59 +22,37 @@ concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<
     { f(fragment) } -> std::same_as<RGB<T>>;
 };
 
-template <std::floating_point T> constexpr inline RGB<T> srgb_to_linear(const RGB<T> &c) noexcept
+template <std::floating_point T, typename ColorType>
+constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
 {
-    auto convert = [](T v) {
-        if (v <= T(0.04045))
-            return v / T(12.92);
-        else
-            return std::pow((v + T(0.055)) / T(1.055), T(2.4));
-    };
-    return {convert(c.r), convert(c.g), convert(c.b)};
-}
+    const T x = std::clamp(uv.x() * (T)(texture.width() - 1), T{0}, (T)(texture.width() - 1));
+    const T y = std::clamp(uv.y() * (T)(texture.height() - 1), T{0}, (T)(texture.height() - 1));
 
-template <std::floating_point T> constexpr inline RGB<T> linear_to_srgb(const RGB<T> &c) noexcept
-{
-    auto convert = [](T v) {
-        if (v <= T(0.0031308))
-            return v * T(12.92);
-        else
-            return T(1.055) * std::pow(v, T(1.0 / 2.4)) - T(0.055);
-    };
-    return {convert(c.r), convert(c.g), convert(c.b)};
-}
+    const size_t fx = floor_to_size(x);
+    const size_t cx = ceil_to_size(x);
+    const size_t fy = floor_to_size(y);
+    const size_t cy = ceil_to_size(y);
 
-template <std::floating_point T>
-constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Texture<T> &texture) noexcept
-{
-    T x = std::clamp(uv.x() * (T)(texture.width() - 1), T{0}, (T)(texture.width() - 1));
-    T y = std::clamp(uv.y() * (T)(texture.height() - 1), T{0}, (T)(texture.height() - 1));
+    const RGB<T> a = srgb_to_linear<T>(texture[fx, fy]);
+    const RGB<T> b = srgb_to_linear<T>(texture[cx, fy]);
+    const RGB<T> c = srgb_to_linear<T>(texture[fx, cy]);
+    const RGB<T> d = srgb_to_linear<T>(texture[cx, cy]);
 
-    size_t fx = floor_to_size(x);
-    size_t cx = ceil_to_size(x);
-    size_t fy = floor_to_size(y);
-    size_t cy = ceil_to_size(y);
+    const T s = x - (T)fx;
+    const T t = y - (T)fy;
 
-    RGB<T> a = srgb_to_linear(texture[fx, fy]);
-    RGB<T> b = srgb_to_linear(texture[cx, fy]);
-    RGB<T> c = srgb_to_linear(texture[fx, cy]);
-    RGB<T> d = srgb_to_linear(texture[cx, cy]);
-
-    T s = x - (T)fx;
-    T t = y - (T)fy;
-
-    T red = (T{1} - s) * (T{1} - t) * a.r + s * (T{1} - t) * b.r + (T{1} - s) * t * c.r + s * t * d.r;
-    T green = (T{1} - s) * (T{1} - t) * a.g + s * (T{1} - t) * b.g + (T{1} - s) * t * c.g + s * t * d.g;
-    T blue = (T{1} - s) * (T{1} - t) * a.b + s * (T{1} - t) * b.b + (T{1} - s) * t * c.b + s * t * d.b;
+    const T red = (T{1} - s) * (T{1} - t) * a.r + s * (T{1} - t) * b.r + (T{1} - s) * t * c.r + s * t * d.r;
+    const T green = (T{1} - s) * (T{1} - t) * a.g + s * (T{1} - t) * b.g + (T{1} - s) * t * c.g + s * t * d.g;
+    const T blue = (T{1} - s) * (T{1} - t) * a.b + s * (T{1} - t) * b.b + (T{1} - s) * t * c.b + s * t * d.b;
     return {red, green, blue};
 }
 
 template <std::floating_point T>
-constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Texture<T> &texture) noexcept
+constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Texture &texture) noexcept
 {
-    size_t tx = floor_to_size(uv.x() * (T)(texture.width() - 1));
-    size_t ty = floor_to_size(uv.y() * (T)(texture.height() - 1));
-    return srgb_to_linear(texture[tx, ty]);
+    const size_t tx = floor_to_size(uv.x() * (T)(texture.width() - 1));
+    const size_t ty = floor_to_size(uv.y() * (T)(texture.height() - 1));
+    return srgb_to_linear<T>(texture[tx, ty]);
 }
 
 template <std::floating_point T>
@@ -111,7 +92,7 @@ template <std::floating_point T> struct DefaultShader
 {
     Vec3<T> camera_position;
     Lights<T> lights;
-    Texture<T> texture;
+    Texture texture;
     T object_shininess;
 
     [[nodiscard]] constexpr inline RGB<T> operator()(const Fragment<T> &fragment) const
@@ -188,13 +169,6 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces, 
     });
 }
 
-template <std::floating_point T> inline void linear_to_srgb(ColorImage<T> &image) noexcept
-{
-    using namespace std;
-    std::transform(execution::par, begin(image), end(image), begin(image),
-                   [](const RGB<T> &color) { return linear_to_srgb<T>(color); });
-}
-
 template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)
 {
     T phi = std::atan2(direction.z(), direction.x());
@@ -204,7 +178,7 @@ template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction,
     T u = (phi + pi) / (T{2} * pi);
     T v = theta / pi;
 
-    return sample_bilinear({u, v}, cubemap);
+    return sample_bilinear<T>({u, v}, cubemap);
 }
 
 template <std::floating_point T> struct ViewPort

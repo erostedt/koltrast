@@ -1,31 +1,32 @@
 #pragma once
+
 #include <concepts>
 #include <cstdlib>
 #include <filesystem>
 
-#include "camera.hpp"
+#include "image.hpp"
 
 namespace fs = std::filesystem;
 
-template <std::floating_point T> using Texture = Image<RGB<T>>;
+using Texture = Image<RGB<u8>>;
 
 u8 *load_rgbu8_image(const fs::path &path, size_t &width, size_t &height, size_t &channels, size_t required_components);
 f32 *load_rgbf_image(const fs::path &path, size_t &width, size_t &height, size_t &channels, size_t required_components);
 void free_image(void *image);
 
-template <std::floating_point T> [[nodiscard]] Image<RGB<T>> load_texture(const fs::path &path) noexcept
+[[nodiscard]] inline Image<RGB<u8>> load_texture(const fs::path &path) noexcept
 {
     size_t width, height, channels;
     u8 *data = load_rgbu8_image(path, width, height, channels, 3ul);
-    Image<RGB<T>> texture(static_cast<size_t>(width), static_cast<size_t>(height));
+    Image<RGB<u8>> texture(static_cast<size_t>(width), static_cast<size_t>(height));
 
     size_t size = width * height;
     for (size_t i = 0; i < size; ++i)
     {
         auto &e = texture[i];
-        e.r = (T)data[3 * i + 0] / T{255};
-        e.g = (T)data[3 * i + 1] / T{255};
-        e.b = (T)data[3 * i + 2] / T{255};
+        e.r = data[3 * i + 0];
+        e.g = data[3 * i + 1];
+        e.b = data[3 * i + 2];
     }
 
     free_image(data);

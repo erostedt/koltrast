@@ -1,13 +1,14 @@
 #pragma once
-#include "camera.hpp"
-#include "check.hpp"
-#include "types.hpp"
+
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <bit>
 #include <concepts>
 #include <cstring>
 #include <vector>
+
+#include "check.hpp"
+#include "types.hpp"
 
 struct Rect
 {

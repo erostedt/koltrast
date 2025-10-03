@@ -1,4 +1,5 @@
 #pragma once
+
 #include "camera.hpp"
 #include "types.hpp"
 #include <concepts>

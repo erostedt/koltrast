@@ -1,9 +1,11 @@
 #pragma once
-#include "camera.hpp"
-#include "types.hpp"
+
 #include <algorithm>
 #include <concepts>
 #include <vector>
+
+#include "image.hpp"
+#include "types.hpp"
 
 template <std::floating_point T> struct PointLight
 {

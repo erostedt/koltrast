@@ -106,8 +106,7 @@ template <std::floating_point T> struct DefaultShader
 
 template <std::floating_point T, FragmentShader<T> Shader, size_t AARows = 1, size_t AACols = AARows>
 inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces, const VertexData<T> &vertex_data,
-                   const std::vector<Vec2<T>> &texture_coordinates, const Shader &fragment_shader,
-                   const IndexBuffer<AARows, AACols> &index_buffer) noexcept
+                   const Shader &fragment_shader, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     using namespace std;
     static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
@@ -145,9 +144,9 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces, 
                     const Vec3<T> wn2 = vertex_data.normals[face.normal_indices[1]];
                     const Vec3<T> wn3 = vertex_data.normals[face.normal_indices[2]];
 
-                    const Vec2<T> uv1 = texture_coordinates[face.texture_indices[0]];
-                    const Vec2<T> uv2 = texture_coordinates[face.texture_indices[1]];
-                    const Vec2<T> uv3 = texture_coordinates[face.texture_indices[2]];
+                    const Vec2<T> uv1 = vertex_data.texture_coordinates[face.texture_indices[0]];
+                    const Vec2<T> uv2 = vertex_data.texture_coordinates[face.texture_indices[1]];
+                    const Vec2<T> uv3 = vertex_data.texture_coordinates[face.texture_indices[2]];
 
                     const Vec2<T> offset = offsets[ix, iy];
 

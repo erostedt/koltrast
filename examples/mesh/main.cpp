@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     const DefaultShader<f32> shader = {camera_position, lights, texture, 16.0f};
     const auto vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
     rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
-    render(image, mesh.faces, vdata, mesh.texture_coordinates, shader, index_buffer);
+    render(image, mesh.faces, vdata, shader, index_buffer);
 
     dump_ppm(image, std::cout);
 }

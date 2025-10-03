@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 
         const VertexData<f32> vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
         rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
-        render(image, mesh.faces, vdata, mesh.texture_coordinates, shader, index_buffer);
+        render(image, mesh.faces, vdata, shader, index_buffer);
         linear_to_srgb(image);
 
         frame.blit(image);

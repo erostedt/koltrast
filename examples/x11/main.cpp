@@ -144,9 +144,9 @@ int main(int argc, char **argv)
         clear_background(image, cubemap, camera_position, v);
         DrawFrame frame(window);
 
-        const VertexBuffer<f32> vbuf = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
-        rasterize_triangles(mesh.faces, vbuf, depth_buffer, index_buffer);
-        render(image, mesh.faces, vbuf, mesh.texture_coordinates, shader, index_buffer);
+        const VertexData<f32> vdata = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
+        rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
+        render(image, mesh.faces, vdata, mesh.texture_coordinates, shader, index_buffer);
         linear_to_srgb(image);
 
         frame.blit(image);

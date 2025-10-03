@@ -24,7 +24,7 @@ template <size_t AARows = 1, size_t AACols = AARows>
     requires(AARows > 0) && (AACols > 0)
 using IndexBuffer = Image<Matrix<size_t, AARows, AACols>>;
 
-template <std::floating_point T> struct VertexBuffer
+template <std::floating_point T> struct VertexData
 {
     std::vector<Vec3<T>> positions;
     std::vector<Vec3<T>> normals;
@@ -263,7 +263,7 @@ template <size_t AARows = 1, size_t AACols = AARows>
 template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles, size_t AARows = 1,
           size_t AACols = AARows>
     requires(RowTiles > 0) && (ColTiles > 0)
-inline void rasterize_triangles(const std::vector<Face> &faces, const VertexBuffer<T> &vertex_buffer,
+inline void rasterize_triangles(const std::vector<Face> &faces, const VertexData<T> &vertex_data,
                                 DepthBuffer<T, AARows, AACols> &depth_buffer,
                                 IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
@@ -276,18 +276,18 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const VertexBuff
         for (size_t i = 0; i < faces.size(); ++i)
         {
             const auto &face = faces[i];
-            const Vec4<T> a = vertex_buffer.screen_coordinates[face.vertex_indices[0]];
-            const Vec4<T> b = vertex_buffer.screen_coordinates[face.vertex_indices[1]];
-            const Vec4<T> c = vertex_buffer.screen_coordinates[face.vertex_indices[2]];
+            const Vec4<T> a = vertex_data.screen_coordinates[face.vertex_indices[0]];
+            const Vec4<T> b = vertex_data.screen_coordinates[face.vertex_indices[1]];
+            const Vec4<T> c = vertex_data.screen_coordinates[face.vertex_indices[2]];
             rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
         }
     });
 }
 
 template <std::floating_point T>
-inline VertexBuffer<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const std::vector<Vec3<T>> &normals,
-                                     const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
-                                     const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
+inline VertexData<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const std::vector<Vec3<T>> &normals,
+                                   const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
+                                   const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
 {
     using namespace std;
 

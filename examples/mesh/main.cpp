@@ -39,9 +39,9 @@ int main(int argc, char **argv)
         .directional_lights = {}};
 
     const DefaultShader<f32> shader = {camera_position, lights, texture, 16.0f};
-    const auto vbuf = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
-    rasterize_triangles(mesh.faces, vbuf, depth_buffer, index_buffer);
-    render(image, mesh.faces, vbuf, mesh.texture_coordinates, shader, index_buffer);
+    const auto vdata = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
+    rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
+    render(image, mesh.faces, vdata, mesh.texture_coordinates, shader, index_buffer);
 
     dump_ppm(image, std::cout);
 }

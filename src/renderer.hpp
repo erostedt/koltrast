@@ -125,7 +125,7 @@ template <std::floating_point T> struct DefaultShader
 
 template <std::floating_point T, FragmentShader<T> Shader, size_t AARows = 1, size_t AACols = AARows>
 inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
-                   const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec4<T>> &world_vertices,
+                   const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec3<T>> &world_vertices,
                    const std::vector<Vec3<T>> &world_normals, const std::vector<Vec2<T>> &texture_coordinates,
                    const Shader &fragment_shader, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
@@ -157,9 +157,9 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                     const Vec4<T> sv2 = screen_vertices[face.vertex_indices[1]];
                     const Vec4<T> sv3 = screen_vertices[face.vertex_indices[2]];
 
-                    const Vec4<T> wv1 = world_vertices[face.vertex_indices[0]];
-                    const Vec4<T> wv2 = world_vertices[face.vertex_indices[1]];
-                    const Vec4<T> wv3 = world_vertices[face.vertex_indices[2]];
+                    const Vec3<T> wv1 = world_vertices[face.vertex_indices[0]];
+                    const Vec3<T> wv2 = world_vertices[face.vertex_indices[1]];
+                    const Vec3<T> wv3 = world_vertices[face.vertex_indices[2]];
 
                     const Vec3<T> wn1 = world_normals[face.normal_indices[0]];
                     const Vec3<T> wn2 = world_normals[face.normal_indices[1]];
@@ -175,8 +175,8 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                     T py = (T)y + T(0.5) + offset.y();
 
                     const Vec3<T> bary = barycentric({px, py}, sv1, sv2, sv3);
-                    const Vec3<T> world_position = (bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3).xyz();
-                    const Vec3<T> world_normal = (bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3);
+                    const Vec3<T> world_position = bary.x() * wv1 + bary.y() * wv2 + bary.z() * wv3;
+                    const Vec3<T> world_normal = bary.x() * wn1 + bary.y() * wn2 + bary.z() * wn3;
                     const Vec2<T> uv = texture_uv(bary, sv1, sv2, sv3, uv1, uv2, uv3);
 
                     color = color + sample_contribution * fragment_shader({world_position, world_normal, uv});

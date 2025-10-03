@@ -23,7 +23,6 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <vector>
 
 using namespace std::chrono;
 
@@ -105,6 +104,7 @@ int main(int argc, char **argv)
     const Vec3f camera_position = {0.0f, 0.5f, 2.0f};
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
+    (void)proj;
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
@@ -112,9 +112,6 @@ int main(int argc, char **argv)
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
-    std::vector<Vec4f> world_vertices;
-    std::vector<Vec3f> world_normals;
-    std::vector<Vec4f> screen_vertices;
     size_t degrees = 0;
 
     const Lights<f32> lights = {
@@ -139,7 +136,7 @@ int main(int argc, char **argv)
 
         degrees = (degrees + 1) % 360;
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
-        const auto vp = proj * view;
+        (void)model;
 
         reset_depth_buffer(depth_buffer);
         reset_index_buffer(index_buffer);
@@ -148,12 +145,10 @@ int main(int argc, char **argv)
         clear_background(image, cubemap, camera_position, v);
         DrawFrame frame(window);
 
-        model_to_world(mesh.vertices, model, world_vertices);
-        model_to_world(mesh.normals, model, world_normals);
-        world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
-        rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
-        render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates, shader,
-               index_buffer);
+        const VertexBuffer<f32> vbuf = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
+        rasterize_triangles(mesh.faces, vbuf, depth_buffer, index_buffer);
+        render(image, mesh.faces, vbuf.screen_coordinates, vbuf.positions, vbuf.normals, mesh.texture_coordinates,
+               shader, index_buffer);
         linear_to_srgb(image);
 
         frame.blit(image);

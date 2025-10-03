@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "camera.hpp"
-#include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
 #include "renderer.hpp"
@@ -24,11 +23,10 @@ int main(int argc, char **argv)
     const auto texture = load_texture<f32>(argv[2]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
-    Vec3f camera_position = {0.0f, 0.0f, 2.0f};
+    const Vec3f camera_position = {0.0f, 0.0f, 2.0f};
     const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, 45.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
-    const auto vp = proj * view;
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
@@ -39,16 +37,13 @@ int main(int argc, char **argv)
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {}};
 
+    (void)model;
+    (void)view;
+    (void)proj;
     const DefaultShader<f32> shader = {camera_position, lights, texture, 16.0f};
-    std::vector<Vec4f> world_vertices;
-    std::vector<Vec3f> world_normals;
-    model_to_world(mesh.vertices, model, world_vertices);
-    model_to_world(mesh.normals, model, world_normals);
-
-    std::vector<Vec4f> screen_vertices;
-    world_to_screen(world_vertices, vp, camera.resolution, screen_vertices);
-    rasterize_triangles(mesh.faces, screen_vertices, depth_buffer, index_buffer);
-    render(image, mesh.faces, screen_vertices, world_vertices, world_normals, mesh.texture_coordinates, shader,
+    const auto vbuf = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
+    rasterize_triangles(mesh.faces, vbuf, depth_buffer, index_buffer);
+    render(image, mesh.faces, vbuf.screen_coordinates, vbuf.positions, vbuf.normals, mesh.texture_coordinates, shader,
            index_buffer);
 
     dump_ppm(image, std::cout);

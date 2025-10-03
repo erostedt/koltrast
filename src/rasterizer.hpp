@@ -28,6 +28,13 @@ template <size_t AARows = 1, size_t AACols = AARows>
     requires(AARows > 0) && (AACols > 0)
 using IndexBuffer = Image<Matrix<size_t, AARows, AACols>>;
 
+template <std::floating_point T> struct VertexBuffer
+{
+    std::vector<Vec3<T>> positions;
+    std::vector<Vec3<T>> normals;
+    std::vector<Vec4<T>> screen_coordinates;
+};
+
 template <std::floating_point T, size_t Rows, size_t Cols = Rows>
 constexpr Matrix<Vec2<T>, Rows, Cols> make_aa_grid()
     requires(Rows > 0) && (Cols > 0)
@@ -260,7 +267,7 @@ template <size_t AARows = 1, size_t AACols = AARows>
 template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles, size_t AARows = 1,
           size_t AACols = AARows>
     requires(RowTiles > 0) && (ColTiles > 0)
-inline void rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
+inline void rasterize_triangles(const std::vector<Face> &faces, const VertexBuffer<T> &vertex_buffer,
                                 DepthBuffer<T, AARows, AACols> &depth_buffer,
                                 IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
@@ -273,12 +280,57 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
         for (size_t i = 0; i < faces.size(); ++i)
         {
             const auto &face = faces[i];
-            const auto a = screen_vertices[face.vertex_indices[0]];
-            const auto b = screen_vertices[face.vertex_indices[1]];
-            const auto c = screen_vertices[face.vertex_indices[2]];
+            const Vec4<T> a = vertex_buffer.screen_coordinates[face.vertex_indices[0]];
+            const Vec4<T> b = vertex_buffer.screen_coordinates[face.vertex_indices[1]];
+            const Vec4<T> c = vertex_buffer.screen_coordinates[face.vertex_indices[2]];
             rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
         }
     });
+}
+
+template <std::floating_point T>
+inline VertexBuffer<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const std::vector<Vec3<T>> &normals,
+                                     const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
+                                     const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
+{
+    using namespace std;
+
+    Mat3x3<T> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
+                      model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
+                      model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
+
+    Mat3x3<T> normal_matrix = mat3.inverse().value().transposed();
+
+    vector<Vec3<T>> world_vertices(size(vertices));
+    transform(execution::par_unseq, begin(vertices), end(vertices), begin(world_vertices),
+              [&](const Vec3<T> &vertex) -> Vec3<T> {
+                  const Vec4<T> v = model_matrix * Vec4<T>{vertex.x(), vertex.y(), vertex.z(), T{1}};
+                  const T invw = T{1} / v.w();
+                  return {v.x() * invw, v.y() * invw, v.z() * invw};
+              });
+
+    vector<Vec3<T>> world_normals(size(normals));
+    transform(execution::par_unseq, begin(normals), end(normals), begin(world_normals),
+              [&](const Vec3<T> &normal) { return *(normal_matrix * normal).normalized(); });
+
+    const Mat4x4<T> vp = projection_matrix * view_matrix;
+    vector<Vec4<T>> screen_vertices(size(vertices));
+    auto project_single = [&](const Vec3<T> &world_point) -> Vec4<T> {
+        const auto clip = vp * Vec4<T>{world_point.x(), world_point.y(), world_point.z(), T{1}};
+        CHECK(abs(clip.w()) > T(1e-6));
+        const Vec3<T> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
+        const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(resolution.width);
+        const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
+        return {sx, sy, ndc.z(), clip.w()};
+    };
+
+    screen_vertices.resize(world_vertices.size());
+    transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices), project_single);
+    return {
+        std::move(world_vertices),
+        std::move(world_normals),
+        std::move(screen_vertices),
+    };
 }
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)

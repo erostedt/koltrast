@@ -203,20 +203,6 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
 }
 
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
-constexpr inline void _rasterize_triangles(const std::vector<Vec4<T>> &screen_vertices, const BoundingBox<T> &bounds,
-                                           DepthBuffer<T, AARows, AACols> &depth_buffer,
-                                           IndexBuffer<AARows, AACols> &index_buffer) noexcept
-{
-    for (size_t i = 0; i < screen_vertices.size(); i += 3)
-    {
-        const auto v1 = screen_vertices[i + 0];
-        const auto v2 = screen_vertices[i + 1];
-        const auto v3 = screen_vertices[i + 2];
-        rasterize_triangle(i / 3, v1, v2, v3, bounds, depth_buffer, index_buffer);
-    }
-}
-
-template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
                                            const BoundingBox<T> &bounds, DepthBuffer<T, AARows, AACols> &depth_buffer,
                                            IndexBuffer<AARows, AACols> &index_buffer) noexcept

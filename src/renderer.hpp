@@ -124,10 +124,9 @@ template <std::floating_point T> struct DefaultShader
 };
 
 template <std::floating_point T, FragmentShader<T> Shader, size_t AARows = 1, size_t AACols = AARows>
-inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
-                   const std::vector<Vec4<T>> &screen_vertices, const std::vector<Vec3<T>> &world_vertices,
-                   const std::vector<Vec3<T>> &world_normals, const std::vector<Vec2<T>> &texture_coordinates,
-                   const Shader &fragment_shader, const IndexBuffer<AARows, AACols> &index_buffer) noexcept
+inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces, const VertexBuffer<T> &vertex_buffer,
+                   const std::vector<Vec2<T>> &texture_coordinates, const Shader &fragment_shader,
+                   const IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
     using namespace std;
     static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
@@ -153,17 +152,17 @@ inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                 if (index != numeric_limits<size_t>::max())
                 {
                     const Face &face = faces[index];
-                    const Vec4<T> sv1 = screen_vertices[face.vertex_indices[0]];
-                    const Vec4<T> sv2 = screen_vertices[face.vertex_indices[1]];
-                    const Vec4<T> sv3 = screen_vertices[face.vertex_indices[2]];
+                    const Vec4<T> sv1 = vertex_buffer.screen_coordinates[face.vertex_indices[0]];
+                    const Vec4<T> sv2 = vertex_buffer.screen_coordinates[face.vertex_indices[1]];
+                    const Vec4<T> sv3 = vertex_buffer.screen_coordinates[face.vertex_indices[2]];
 
-                    const Vec3<T> wv1 = world_vertices[face.vertex_indices[0]];
-                    const Vec3<T> wv2 = world_vertices[face.vertex_indices[1]];
-                    const Vec3<T> wv3 = world_vertices[face.vertex_indices[2]];
+                    const Vec3<T> wv1 = vertex_buffer.positions[face.vertex_indices[0]];
+                    const Vec3<T> wv2 = vertex_buffer.positions[face.vertex_indices[1]];
+                    const Vec3<T> wv3 = vertex_buffer.positions[face.vertex_indices[2]];
 
-                    const Vec3<T> wn1 = world_normals[face.normal_indices[0]];
-                    const Vec3<T> wn2 = world_normals[face.normal_indices[1]];
-                    const Vec3<T> wn3 = world_normals[face.normal_indices[2]];
+                    const Vec3<T> wn1 = vertex_buffer.normals[face.normal_indices[0]];
+                    const Vec3<T> wn2 = vertex_buffer.normals[face.normal_indices[1]];
+                    const Vec3<T> wn3 = vertex_buffer.normals[face.normal_indices[2]];
 
                     const Vec2<T> uv1 = texture_coordinates[face.texture_indices[0]];
                     const Vec2<T> uv2 = texture_coordinates[face.texture_indices[1]];

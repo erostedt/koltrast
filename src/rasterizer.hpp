@@ -28,6 +28,7 @@ template <std::floating_point T> struct VertexData
 {
     std::vector<Vec3<T>> positions;
     std::vector<Vec3<T>> normals;
+    std::vector<Vec2<T>> texture_coordinates;
     std::vector<Vec4<T>> screen_coordinates;
 };
 
@@ -286,8 +287,9 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const VertexData
 
 template <std::floating_point T>
 inline VertexData<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const std::vector<Vec3<T>> &normals,
-                                   const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
-                                   const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
+                                   const std::vector<Vec2<T>> &texture_coordinates, const Mat4x4<T> &model_matrix,
+                                   const Mat4x4<T> &view_matrix, const Mat4x4<T> &projection_matrix,
+                                   const Resolution &resolution) noexcept
 {
     using namespace std;
 
@@ -325,8 +327,17 @@ inline VertexData<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const s
     return {
         std::move(world_vertices),
         std::move(world_normals),
+        texture_coordinates,
         std::move(screen_vertices),
     };
+}
+
+template <std::floating_point T>
+inline VertexData<T> vertex_shader(const Mesh<T> &mesh, const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
+                                   const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
+{
+    return vertex_shader(mesh.vertices, mesh.normals, mesh.texture_coordinates, model_matrix, view_matrix,
+                         projection_matrix, resolution);
 }
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)

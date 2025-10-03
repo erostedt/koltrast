@@ -177,7 +177,7 @@ static const std::array<f32, 257> srgb_to_linear_table_f32 = generate_srgb_to_li
 static const std::array<f64, 257> srgb_to_linear_table_f64 = generate_srgb_to_linear_table<f64>();
 [[nodiscard]] constexpr inline f32 srgb_to_linearf(f32 c) noexcept
 {
-    c = std::clamp(c * 255.5f, 0.0f, 256.0f);
+    c = std::clamp(c * 255.5f, 0.0f, 255.0f);
     const f32 l = std::floor(c);
     const f32 t = c - l;
     const size_t i = (size_t)l;
@@ -187,7 +187,7 @@ static const std::array<f64, 257> srgb_to_linear_table_f64 = generate_srgb_to_li
 
 [[nodiscard]] constexpr inline f64 srgb_to_linearf(f64 c) noexcept
 {
-    c = std::clamp(c * 255.5, 0.0, 256.0);
+    c = std::clamp(c * 255.5, 0.0, 255.0);
     const f64 l = std::floor(c);
     const f64 t = c - l;
     const size_t i = (size_t)l;
@@ -233,7 +233,7 @@ static const std::array<f32, 1025> linear_to_srgb_table_f32 = generate_linear_to
 static const std::array<f64, 1025> linear_to_srgb_table_f64 = generate_linear_to_srgb_table<f64>();
 constexpr inline f32 linear_to_srgbf(f32 c) noexcept
 {
-    c = std::clamp(c * 1024.0f, 0.0f, 1024.0f);
+    c = std::clamp(c * 1024.5f, 0.0f, 1024.0f);
     const f32 l = std::floor(c);
     const f32 t = c - l;
     const size_t i = (size_t)l;

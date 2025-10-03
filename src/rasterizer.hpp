@@ -202,21 +202,6 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
     }
 }
 
-template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
-constexpr inline void _rasterize_triangles(const std::vector<Face> &faces, const std::vector<Vec4<T>> &screen_vertices,
-                                           const BoundingBox<T> &bounds, DepthBuffer<T, AARows, AACols> &depth_buffer,
-                                           IndexBuffer<AARows, AACols> &index_buffer) noexcept
-{
-    for (size_t i = 0; i < faces.size(); ++i)
-    {
-        const auto &face = faces[i];
-        const auto a = screen_vertices[face.vertex_indices[0]];
-        const auto b = screen_vertices[face.vertex_indices[1]];
-        const auto c = screen_vertices[face.vertex_indices[2]];
-        rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
-    }
-}
-
 template <std::floating_point T, size_t Rows, size_t Cols>
 constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &resolution) noexcept
 {
@@ -285,7 +270,14 @@ inline void rasterize_triangles(const std::vector<Face> &faces, const std::vecto
     using namespace std;
     const auto grid = make_grid<T, RowTiles, ColTiles>({depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
-        _rasterize_triangles(faces, screen_vertices, bounds, depth_buffer, index_buffer);
+        for (size_t i = 0; i < faces.size(); ++i)
+        {
+            const auto &face = faces[i];
+            const auto a = screen_vertices[face.vertex_indices[0]];
+            const auto b = screen_vertices[face.vertex_indices[1]];
+            const auto c = screen_vertices[face.vertex_indices[2]];
+            rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
+        }
     });
 }
 

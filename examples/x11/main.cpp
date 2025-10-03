@@ -104,7 +104,6 @@ int main(int argc, char **argv)
     const Vec3f camera_position = {0.0f, 0.5f, 2.0f};
     const auto view = look_at<f32>(camera_position, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f});
     const auto proj = projection_matrix(camera);
-    (void)proj;
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
@@ -136,7 +135,6 @@ int main(int argc, char **argv)
 
         degrees = (degrees + 1) % 360;
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
-        (void)model;
 
         reset_depth_buffer(depth_buffer);
         reset_index_buffer(index_buffer);

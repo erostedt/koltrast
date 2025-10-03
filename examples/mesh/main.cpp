@@ -37,9 +37,6 @@ int main(int argc, char **argv)
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {}};
 
-    (void)model;
-    (void)view;
-    (void)proj;
     const DefaultShader<f32> shader = {camera_position, lights, texture, 16.0f};
     const auto vbuf = vertex_shader(mesh.vertices, mesh.normals, model, view, proj, camera.resolution);
     rasterize_triangles(mesh.faces, vbuf, depth_buffer, index_buffer);

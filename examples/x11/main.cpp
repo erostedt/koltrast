@@ -109,7 +109,6 @@ int main(int argc, char **argv)
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
     size_t degrees = 0;
-
     const DefaultFragmentShader<f32> fragment_shader = {
         .camera_position = camera_position,
         .texture = texture,

@@ -13,7 +13,6 @@ struct counting_iterator
 
     value_type value = 0;
 
-    // Core ops
     value_type operator*() const noexcept
     {
         return value;
@@ -75,6 +74,5 @@ struct counting_iterator
         return static_cast<value_type>(static_cast<difference_type>(value) + n);
     }
 
-    // C++20 comparisons
     auto operator<=>(const counting_iterator &) const = default;
 };

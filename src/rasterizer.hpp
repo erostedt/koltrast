@@ -236,22 +236,6 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
     return buffer;
 }
 
-template <size_t AARows = 1, size_t AACols = AARows>
-inline void reset_index_buffer(IndexBuffer<AARows, AACols> &buffer) noexcept
-{
-    using namespace std;
-    for_each(execution::par_unseq, begin(buffer), end(buffer),
-             [](Matrix<size_t, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<size_t>::max()); });
-}
-template <size_t AARows = 1, size_t AACols = AARows>
-[[nodiscard]] inline IndexBuffer<AARows, AACols> create_index_buffer(size_t width, size_t height)
-{
-    using namespace std;
-    IndexBuffer<AARows, AACols> buffer(width, height);
-    reset_index_buffer(buffer);
-    return buffer;
-}
-
 template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles, size_t AARows = 1,
           size_t AACols = AARows>
     requires(RowTiles > 0) && (ColTiles > 0)

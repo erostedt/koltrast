@@ -102,13 +102,13 @@ inline void render(ColorImage<T> &linear_image, const std::vector<OutputVertex<T
 }
 
 // ADD AA templates
-template <std::floating_point T> struct Renderer
+template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> struct Renderer
 {
     // TODO: Pass in generic vs/fs
     void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                 const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
-                const DefaultVertexShader<T> vs, const DefaultFragmentShader<T> &fs, DepthBuffer<T> depth_buffer,
-                ColorImage<T> &linear_image)
+                const DefaultVertexShader<T> vs, const DefaultFragmentShader<T> &fs,
+                DepthBuffer<T, AARows, AACols> &depth_buffer, ColorImage<T> &linear_image)
     {
         CHECK(depth_buffer.resolution() == linear_image.resolution());
 
@@ -119,9 +119,13 @@ template <std::floating_point T> struct Renderer
         const Resolution resolution = linear_image.resolution();
         if (resolution != index_buffer.resolution())
         {
-            index_buffer = IndexBuffer<>(linear_image.width(), linear_image.height());
+            index_buffer = IndexBuffer<AARows, AACols>(linear_image.width(), linear_image.height());
         }
-        reset_index_buffer(index_buffer);
+
+        for_each(
+            execution::par_unseq, begin(index_buffer), end(index_buffer),
+            [](Matrix<size_t, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<size_t>::max()); });
+
         for_each(execution::par_unseq, counting_iterator(0), counting_iterator(size(faces)), [&](size_t face_index) {
             const Face &face = faces[face_index];
             for (size_t vertex_index = 0; vertex_index < Face::size; ++vertex_index)
@@ -141,7 +145,7 @@ template <std::floating_point T> struct Renderer
         ::render(linear_image, vertex_buffer, screen_coordinates, fs, index_buffer);
     }
 
-    IndexBuffer<> index_buffer;
+    IndexBuffer<AARows, AACols> index_buffer;
     std::vector<OutputVertex<T>> vertex_buffer;
     std::vector<Vec3<T>> screen_coordinates;
 };

@@ -88,7 +88,7 @@ constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const Vec4<T> &v1, cons
     return uv_interp / invw_interp;
 }
 
-template <std::floating_point T> struct DefaultShader
+template <std::floating_point T> struct DefaultFragmentShader
 {
     Vec3<T> camera_position;
     Lights<T> lights;

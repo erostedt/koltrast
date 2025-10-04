@@ -76,6 +76,51 @@ concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<
     { f(fragment) } -> std::same_as<RGB<T>>;
 };
 
+template <std::floating_point T, typename ColorType>
+constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
+{
+    const size_t tx = floor_to_size(uv.x() * (T)(texture.width() - 1));
+    const size_t ty = floor_to_size(uv.y() * (T)(texture.height() - 1));
+    return srgb_to_linear<T>(texture[tx, ty]);
+}
+
+template <std::floating_point T, typename ColorType>
+constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
+{
+    const T x = std::clamp(uv.x() * (T)(texture.width() - 1), T{0}, (T)(texture.width() - 1));
+    const T y = std::clamp(uv.y() * (T)(texture.height() - 1), T{0}, (T)(texture.height() - 1));
+
+    const size_t fx = floor_to_size(x);
+    const size_t cx = ceil_to_size(x);
+    const size_t fy = floor_to_size(y);
+    const size_t cy = ceil_to_size(y);
+
+    const RGB<T> a = srgb_to_linear<T>(texture[fx, fy]);
+    const RGB<T> b = srgb_to_linear<T>(texture[cx, fy]);
+    const RGB<T> c = srgb_to_linear<T>(texture[fx, cy]);
+    const RGB<T> d = srgb_to_linear<T>(texture[cx, cy]);
+
+    const T s = x - (T)fx;
+    const T t = y - (T)fy;
+
+    const T red = (T{1} - s) * (T{1} - t) * a.r + s * (T{1} - t) * b.r + (T{1} - s) * t * c.r + s * t * d.r;
+    const T green = (T{1} - s) * (T{1} - t) * a.g + s * (T{1} - t) * b.g + (T{1} - s) * t * c.g + s * t * d.g;
+    const T blue = (T{1} - s) * (T{1} - t) * a.b + s * (T{1} - t) * b.b + (T{1} - s) * t * c.b + s * t * d.b;
+    return {red, green, blue};
+}
+
+template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)
+{
+    T phi = std::atan2(direction.z(), direction.x());
+    T theta = std::acos(direction.y());
+
+    T pi = std::numbers::pi_v<f32>;
+    T u = (phi + pi) / (T{2} * pi);
+    T v = theta / pi;
+
+    return sample_bilinear<T>({u, v}, cubemap);
+}
+
 template <std::floating_point T> struct DefaultFragmentShader
 {
     Vec3<T> camera_position;

@@ -285,19 +285,3 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
     return {sx, sy, ndc.z()};
 }
-
-template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)
-{
-    using std::ranges::for_each;
-    stream << "P3\n";
-    stream << image.width() << ' ' << image.height() << "\n255\n";
-
-    const auto write_pixel = [&stream](const auto &color) {
-        const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
-        const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
-        const auto b = std::clamp(color.b * T{255}, T{0}, T{255});
-        stream << (int)r << ' ' << (int)g << ' ' << (int)b << '\n';
-    };
-
-    for_each(image, write_pixel);
-}

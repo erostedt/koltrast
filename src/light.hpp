@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <concepts>
 
-#include "image.hpp"
+#include "color.hpp"
 #include "types.hpp"
 
 template <std::floating_point T> struct PointLight

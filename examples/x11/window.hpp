@@ -9,6 +9,7 @@
 
 #include "check.hpp"
 #include "color.hpp"
+#include "image.hpp"
 #include "types.hpp"
 
 struct Rect

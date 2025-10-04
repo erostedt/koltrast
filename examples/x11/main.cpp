@@ -88,18 +88,15 @@ void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, co
 
 int main(int argc, char **argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cout << "./mesh obj_file texture_file > output.ppm";
+        std::cout << "./mesh obj_file texture_file cubemap_file";
         return 1;
     }
 
-    // TODO: (ecrt) Remove hardcoded path
-    const auto path = fs::path("/home/eric/Downloads/qwantani_sunset_puresky_1k.hdr");
-    const auto cubemap = load_cubemap<f32>(path);
-
     const auto mesh = load_obj<f32>(argv[1]);
     const auto texture = load_texture(argv[2]);
+    const auto cubemap = load_cubemap<f32>(argv[3]);
 
     const Camera<f32> camera = {{1280, 720}, 60, 0.2f, 100.0f};
     const Vec3f camera_position = {0.0f, 0.5f, 2.0f};

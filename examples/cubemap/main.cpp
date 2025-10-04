@@ -1,10 +1,10 @@
+#include <filesystem>
+
 #include "camera.hpp"
-#include "rasterizer.hpp"
-#include "renderer.hpp"
+#include "shader.hpp"
 #include "texture.hpp"
 #include "transform.hpp"
 #include "types.hpp"
-#include <filesystem>
 
 namespace fs = std::filesystem;
 
@@ -19,7 +19,7 @@ int main()
     Vec3f position = {0.0f, 0.0f, 2.0f};
     Vec3f target = {0.0f, 0.0f, 0.0f};
     const auto view = look_at<f32>(position, target, up);
-    const auto v = view_port(camera, position, view);
+    const auto v = create_view_port(camera, position, view);
 
     Image<RGB<f32>> output(1280, 720);
 

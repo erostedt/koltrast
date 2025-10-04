@@ -53,7 +53,7 @@ template <std::floating_point T> struct ViewPort
 };
 
 template <std::floating_point T>
-ViewPort<T> view_port(const Camera<T> &camera, const Vec3<T> &position, const Mat4x4<T> &view)
+ViewPort<T> create_view_port(const Camera<T> &camera, const Vec3<T> &position, const Mat4x4<T> &view)
 {
     T aspect_ratio = (T)camera.resolution.width / (T)camera.resolution.height;
 

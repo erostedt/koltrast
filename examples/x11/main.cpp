@@ -9,9 +9,9 @@
 
 #include "camera.hpp"
 #include "counting_iterator.hpp"
+#include "depth_buffer.hpp"
 #include "image.hpp"
 #include "matrix.hpp"
-#include "depth_buffer.hpp"
 #include "obj.hpp"
 #include "renderer.hpp"
 #include "texture.hpp"
@@ -70,9 +70,10 @@ class LimitFps
     steady_clock::time_point start_ns;
 };
 
-void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Vec3f &camera_position,
-                      const ViewPort<f32> &view_port)
+void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Camera<f32> &camera,
+                      const Vec3f &camera_position, const Mat4x4f &view)
 {
+    const auto view_port = create_view_port(camera, camera_position, view);
     std::for_each(std::execution::par_unseq, counting_iterator(0), counting_iterator(image.size()), [&](size_t i) {
         size_t x = i % image.width();
         size_t y = i / image.width();
@@ -136,22 +137,15 @@ int main(int argc, char **argv)
 
         degrees = (degrees + 1) % 360;
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
-        const DefaultVertexShader<f32> vs(model, view, proj);
+        const DefaultVertexShader<f32> vertex_shader(model, view, proj);
 
         reset_depth_buffer(depth_buffer);
-
-        const auto v = view_port(camera, camera_position, view);
-        clear_background(image, cubemap, camera_position, v);
+        clear_background(image, cubemap, camera, camera_position, view);
         DrawFrame frame(window);
 
-        renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vs, fragment_shader,
-                        depth_buffer, image);
-
-        // const VertexData<f32> vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
-        // rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
-        // render(image, mesh.faces, vdata, fragment_shader, index_buffer);
+        renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
+                        fragment_shader, depth_buffer, image);
         linear_to_srgb(image);
-
         frame.blit(image);
     }
 }

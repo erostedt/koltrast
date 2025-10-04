@@ -31,15 +31,21 @@ int main(int argc, char **argv)
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
 
-    const Lights<f32> lights = {
-        .ambient = 0.3f,
+    Renderer<f32> renderer;
+
+    const DefaultFragmentShader<f32> fragment_shader = {
+        .camera_position = camera_position,
+        .texture = texture,
+        .object_shininess = 16.0f,
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
-        .directional_lights = {}};
+        .directional_lights = {},
+        .ambient = 0.3f};
 
-    const DefaultFragmentShader<f32> shader = {camera_position, lights, texture, 16.0f};
-    const auto vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
-    rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
-    render(image, mesh.faces, vdata, shader, index_buffer);
+    const DefaultVertexShader<f32> vertex_shader(model, view, proj);
 
+    renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader, fragment_shader,
+                    depth_buffer, image);
+
+    linear_to_srgb(image);
     dump_ppm(image, std::cout);
 }

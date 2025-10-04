@@ -4,6 +4,7 @@
 
 #include "image.hpp"
 #include "light.hpp"
+#include "math.hpp"
 #include "texture.hpp"
 #include "types.hpp"
 

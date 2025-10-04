@@ -232,7 +232,7 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void reset_depth_buffer(DepthBuffer<T, AARows, AACols> &buffer) noexcept
 {
     using namespace std;
-    for_each(begin(buffer), end(buffer),
+    for_each(execution::par_unseq, begin(buffer), end(buffer),
              [](Matrix<T, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<T>::infinity()); });
 }
 
@@ -246,10 +246,10 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 }
 
 template <size_t AARows = 1, size_t AACols = AARows>
-constexpr inline void reset_index_buffer(IndexBuffer<AARows, AACols> &buffer) noexcept
+inline void reset_index_buffer(IndexBuffer<AARows, AACols> &buffer) noexcept
 {
     using namespace std;
-    for_each(begin(buffer), end(buffer),
+    for_each(execution::par_unseq, begin(buffer), end(buffer),
              [](Matrix<size_t, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<size_t>::max()); });
 }
 template <size_t AARows = 1, size_t AACols = AARows>

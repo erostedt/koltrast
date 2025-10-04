@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "check.hpp"
+#include "color.hpp"
 #include "types.hpp"
 
 struct Rect

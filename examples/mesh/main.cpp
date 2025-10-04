@@ -6,7 +6,6 @@
 #include "camera.hpp"
 #include "image.hpp"
 #include "obj.hpp"
-#include "rasterizer.hpp"
 #include "renderer.hpp"
 #include "texture.hpp"
 #include "transform.hpp"
@@ -31,7 +30,6 @@ int main(int argc, char **argv)
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
-    auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
     const Lights<f32> lights = {
         .ambient = 0.3f,

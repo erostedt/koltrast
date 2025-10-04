@@ -16,12 +16,23 @@ struct Resolution
     size_t height = 480;
 };
 
+inline bool operator==(const Resolution &lhs, const Resolution &rhs)
+{
+    return (lhs.width == rhs.width) && (lhs.height == rhs.height);
+}
+
+inline bool operator!=(const Resolution &lhs, const Resolution &rhs)
+{
+    return !(lhs == rhs);
+}
+
 template <typename T> class Image
 {
     using iterator = std::vector<T>::iterator;
     using const_iterator = std::vector<T>::const_iterator;
 
   public:
+    Image() = default;
     Image(size_t width, size_t height) : res(width, height), pixels(width * height)
     {
     }
@@ -43,7 +54,7 @@ template <typename T> class Image
 
     [[nodiscard]] constexpr inline const Resolution &resolution() const noexcept
     {
-        return resolution;
+        return res;
     }
 
     [[nodiscard]] constexpr inline T &operator[](size_t i) noexcept

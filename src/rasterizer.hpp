@@ -85,8 +85,8 @@ template <typename T> struct BoundingBox
 };
 
 template <std::floating_point T>
-[[nodiscard]] constexpr inline BoundingBox<T> bounding_box(const Vec4<T> &p1, const Vec4<T> &p2,
-                                                           const Vec4<T> &p3) noexcept
+[[nodiscard]] constexpr inline BoundingBox<T> bounding_box(const Vec3<T> &p1, const Vec3<T> &p2,
+                                                           const Vec3<T> &p3) noexcept
 {
     using namespace std;
     T left = min(min(p1.x(), p2.x()), p3.x());
@@ -108,7 +108,7 @@ template <std::floating_point T>
     return {{l, t}, {r, b}};
 }
 
-template <std::floating_point T> [[nodiscard]] constexpr inline bool out_of_z_bounds(const Vec4<T> &point) noexcept
+template <std::floating_point T> [[nodiscard]] constexpr inline bool out_of_z_bounds(const Vec3<T> &point) noexcept
 {
     return point.z() < T{0} || point.z() > T{1};
 }
@@ -164,7 +164,7 @@ constexpr inline void rasterize_pixel(size_t triangle_index, const Vec3<T> &weig
 }
 
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
-constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3,
+constexpr inline void rasterize_triangle(size_t triangle_index, const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3,
                                          const BoundingBox<T> &bounds, DepthBuffer<T, AARows, AACols> &depth_buffer,
                                          IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
@@ -191,7 +191,7 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec4<T> &p
 
     const auto domain = iteration_domain(intersection);
 
-    const Vec4<T> p = {(T)domain.top_left.x() + T{0.5}, (T)domain.top_left.y() + T{0.5}, 0.0f, 0.0f};
+    const Vec3<T> p = {(T)domain.top_left.x() + T{0.5}, (T)domain.top_left.y() + T{0.5}, 0.0f};
 
     T w = T{1.0} / area;
 
@@ -285,22 +285,22 @@ template <size_t AARows = 1, size_t AACols = AARows>
 template <std::floating_point T, size_t RowTiles = 4, size_t ColTiles = RowTiles, size_t AARows = 1,
           size_t AACols = AARows>
     requires(RowTiles > 0) && (ColTiles > 0)
-inline void rasterize_triangles(const std::vector<Face> &faces, const VertexData<T> &vertex_data,
+inline void rasterize_triangles(const std::vector<Vec3<T>> screen_coordinates,
                                 DepthBuffer<T, AARows, AACols> &depth_buffer,
                                 IndexBuffer<AARows, AACols> &index_buffer) noexcept
 {
+    CHECK(screen_coordinates.size() % 3 == 0);
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());
 
     using namespace std;
     const auto grid = make_grid<T, RowTiles, ColTiles>({depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
-        for (size_t i = 0; i < faces.size(); ++i)
+        for (size_t i = 0; i < screen_coordinates.size() / 3; ++i)
         {
-            const auto &face = faces[i];
-            const Vec4<T> a = vertex_data.screen_coordinates[face.vertex_indices[0]];
-            const Vec4<T> b = vertex_data.screen_coordinates[face.vertex_indices[1]];
-            const Vec4<T> c = vertex_data.screen_coordinates[face.vertex_indices[2]];
+            const Vec3<T> &a = screen_coordinates[3 * i + 0];
+            const Vec3<T> &b = screen_coordinates[3 * i + 1];
+            const Vec3<T> &c = screen_coordinates[3 * i + 2];
             rasterize_triangle(i, a, b, c, bounds, depth_buffer, index_buffer);
         }
     });
@@ -351,6 +351,16 @@ inline VertexData<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const s
         texture_coordinates,
         std::move(screen_vertices),
     };
+}
+
+template <std::floating_point T>
+constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, const Resolution &resolution) noexcept
+{
+    CHECK(abs(clip_position.w()) > T(1e-6));
+    const Vec3<T> ndc = clip_position.xyz() / clip_position.w();
+    const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(resolution.width);
+    const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
+    return {sx, sy, ndc.z()};
 }
 
 template <std::floating_point T>

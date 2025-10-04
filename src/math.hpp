@@ -15,7 +15,7 @@ template <std::floating_point T> [[nodiscard]] constexpr inline size_t ceil_to_s
 }
 
 template <std::floating_point T>
-[[nodiscard]] constexpr inline T edge_function(const Vec4<T> &p1, const Vec4<T> &p2, const Vec4<T> &p3) noexcept
+[[nodiscard]] constexpr inline T edge_function(const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3) noexcept
 {
     return (p2.y() - p1.y()) * (p3.x() - p1.x()) - (p2.x() - p1.x()) * (p3.y() - p1.y());
 }

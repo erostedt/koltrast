@@ -1,3 +1,3 @@
-add_executable(mesh main.cpp)
+# add_executable(mesh main.cpp)
 
-target_link_libraries(mesh ${PROJECT_NAME})
+# target_link_libraries(mesh ${PROJECT_NAME})

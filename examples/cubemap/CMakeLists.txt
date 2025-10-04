@@ -1,3 +1,3 @@
-add_executable(cubemap main.cpp)
+# add_executable(cubemap main.cpp)
 
-target_link_libraries(cubemap ${PROJECT_NAME})
+# target_link_libraries(cubemap ${PROJECT_NAME})

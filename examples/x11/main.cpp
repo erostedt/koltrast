@@ -108,7 +108,6 @@ int main(int argc, char **argv)
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
-    auto index_buffer = create_index_buffer(camera.resolution.width, camera.resolution.height);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
@@ -119,8 +118,9 @@ int main(int argc, char **argv)
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {}};
 
-    const DefaultFragmentShader<f32> shader = {camera_position, lights, texture, 16.0f};
+    const DefaultFragmentShader<f32> fragment_shader = {camera_position, lights, texture, 16.0f};
 
+    Renderer<f32> renderer;
     while (!window.should_close)
     {
         PrintFps print_fps;
@@ -136,17 +136,20 @@ int main(int argc, char **argv)
 
         degrees = (degrees + 1) % 360;
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
+        const DefaultVertexShader<f32> vs(model, view, proj);
 
         reset_depth_buffer(depth_buffer);
-        reset_index_buffer(index_buffer);
 
         const auto v = view_port(camera, camera_position, view);
         clear_background(image, cubemap, camera_position, v);
         DrawFrame frame(window);
 
-        const VertexData<f32> vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
-        rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
-        render(image, mesh.faces, vdata, shader, index_buffer);
+        renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vs, fragment_shader,
+                        depth_buffer, image);
+
+        // const VertexData<f32> vdata = vertex_shader(mesh, model, view, proj, camera.resolution);
+        // rasterize_triangles(mesh.faces, vdata, depth_buffer, index_buffer);
+        // render(image, mesh.faces, vdata, fragment_shader, index_buffer);
         linear_to_srgb(image);
 
         frame.blit(image);

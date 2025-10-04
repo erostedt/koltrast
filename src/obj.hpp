@@ -11,9 +11,10 @@
 struct Face
 {
     const static size_t INVALID_INDEX = std::numeric_limits<size_t>::max();
-    size_t vertex_indices[3]{INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
-    size_t texture_indices[3] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
-    size_t normal_indices[3] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
+    const static size_t size = 3;
+    size_t vertex_indices[size]{INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
+    size_t texture_indices[size] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
+    size_t normal_indices[size] = {INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
 };
 
 template <std::floating_point T> struct Mesh

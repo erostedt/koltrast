@@ -24,6 +24,26 @@ template <size_t AARows = 1, size_t AACols = AARows>
     requires(AARows > 0) && (AACols > 0)
 using IndexBuffer = Image<Matrix<size_t, AARows, AACols>>;
 
+template <std::floating_point T> struct InputVertex
+{
+    Vec3<T> position;
+    Vec3<T> normal;
+    Vec2<T> texture_coordinates;
+};
+
+template <std::floating_point T> struct OutputVertex
+{
+    Vec3<T> world_position;
+    Vec3<T> world_normal;
+    Vec2<T> texture_coordinates;
+    Vec4<T> clip_position;
+};
+
+template <typename F, typename T>
+concept VertexShader = std::floating_point<T> && requires(F f, const InputVertex<T> &vertex) {
+    { f(vertex) } -> std::same_as<OutputVertex<T>>;
+};
+
 template <std::floating_point T> struct VertexData
 {
     std::vector<Vec3<T>> positions;
@@ -339,6 +359,30 @@ inline VertexData<T> vertex_shader(const Mesh<T> &mesh, const Mat4x4<T> &model_m
     return vertex_shader(mesh.vertices, mesh.normals, mesh.texture_coordinates, model_matrix, view_matrix,
                          projection_matrix, resolution);
 }
+
+template <std::floating_point T> class DefaultVertexShader
+{
+    Mat4x4<T> model_matrix;
+    Mat4x4<T> view_projection_matrix;
+    Mat4x4<T> normal_matrix;
+
+    [[nodiscard]] constexpr inline OutputVertex<T> operator()(const InputVertex<T> &vertex) const
+    {
+        using namespace std;
+        const Vec4<T> world_position =
+            model_matrix * Vec4<T>{vertex.position.x(), vertex.position.y(), vertex.position.z(), T{1}};
+        const T invw = T{1} / world_position.w();
+
+        OutputVertex<T> out;
+        out.world_position.x() = world_position.x() * invw;
+        out.world_position.y() = world_position.y() * invw;
+        out.world_position.z() = world_position.z() * invw;
+        out.world_normal = *(normal_matrix * vertex.normal).normalized();
+        out.texture_coordinates = vertex.texture_coordinates;
+        out.clip_position = world_position * world_position;
+        return out;
+    }
+};
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)
 {

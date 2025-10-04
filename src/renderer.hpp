@@ -7,23 +7,11 @@
 #include "camera.hpp"
 #include "counting_iterator.hpp"
 #include "image.hpp"
-#include "light.hpp"
 #include "math.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
+#include "shader.hpp"
 #include "texture.hpp"
-
-template <std::floating_point T> struct Fragment
-{
-    Vec3<T> world_position;
-    Vec3<T> world_normal;
-    Vec2<T> uv;
-};
-
-template <typename F, typename T>
-concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<T> &fragment) {
-    { f(fragment) } -> std::same_as<RGB<T>>;
-};
 
 template <std::floating_point T, typename ColorType>
 constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
@@ -86,22 +74,6 @@ constexpr inline Vec2<T> texture_uv(const Vec3<T> &bary, const T v1_clipw, const
 
     return uv_interp / invw_interp;
 }
-
-template <std::floating_point T> struct DefaultFragmentShader
-{
-    Vec3<T> camera_position;
-    Lights<T> lights;
-    Texture texture;
-    T object_shininess;
-
-    [[nodiscard]] constexpr inline RGB<T> operator()(const Fragment<T> &fragment) const
-    {
-        const RGB<T> object_color = sample_bilinear(fragment.uv, texture);
-        const RGB<T> light =
-            accumulate_light(lights, fragment.world_position, fragment.world_normal, camera_position, object_shininess);
-        return light * object_color;
-    }
-};
 
 template <std::floating_point T, FragmentShader<T> Shader, size_t AARows = 1, size_t AACols = AARows>
 inline void render(ColorImage<T> &linear_image, const std::vector<OutputVertex<T>> &vertices,

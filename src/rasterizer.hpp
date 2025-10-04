@@ -13,7 +13,6 @@
 #include "image.hpp"
 #include "math.hpp"
 #include "matrix.hpp"
-#include "obj.hpp"
 #include "types.hpp"
 
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
@@ -23,35 +22,6 @@ using DepthBuffer = Image<Matrix<T, AARows, AACols>>;
 template <size_t AARows = 1, size_t AACols = AARows>
     requires(AARows > 0) && (AACols > 0)
 using IndexBuffer = Image<Matrix<size_t, AARows, AACols>>;
-
-template <std::floating_point T> struct InputVertex
-{
-    Vec3<T> position;
-    Vec3<T> normal;
-    Vec2<T> texture_coordinates;
-};
-
-template <std::floating_point T> struct OutputVertex
-{
-    // TODO: Remove world prefix
-    Vec3<T> world_position;
-    Vec3<T> world_normal;
-    Vec2<T> texture_coordinates;
-    Vec4<T> clip_position;
-};
-
-template <typename F, typename T>
-concept VertexShader = std::floating_point<T> && requires(F f, const InputVertex<T> &vertex) {
-    { f(vertex) } -> std::same_as<OutputVertex<T>>;
-};
-
-template <std::floating_point T> struct VertexData
-{
-    std::vector<Vec3<T>> positions;
-    std::vector<Vec3<T>> normals;
-    std::vector<Vec2<T>> texture_coordinates;
-    std::vector<Vec4<T>> screen_coordinates;
-};
 
 template <std::floating_point T, size_t Rows, size_t Cols = Rows>
 constexpr Matrix<Vec2<T>, Rows, Cols> make_aa_grid()
@@ -307,53 +277,6 @@ inline void rasterize_triangles(const std::vector<Vec3<T>> screen_coordinates,
 }
 
 template <std::floating_point T>
-inline VertexData<T> vertex_shader(const std::vector<Vec3<T>> &vertices, const std::vector<Vec3<T>> &normals,
-                                   const std::vector<Vec2<T>> &texture_coordinates, const Mat4x4<T> &model_matrix,
-                                   const Mat4x4<T> &view_matrix, const Mat4x4<T> &projection_matrix,
-                                   const Resolution &resolution) noexcept
-{
-    using namespace std;
-
-    Mat3x3<T> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
-                      model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
-                      model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
-
-    Mat3x3<T> normal_matrix = mat3.inverse().value().transposed();
-
-    vector<Vec3<T>> world_vertices(size(vertices));
-    transform(execution::par_unseq, begin(vertices), end(vertices), begin(world_vertices),
-              [&](const Vec3<T> &vertex) -> Vec3<T> {
-                  const Vec4<T> v = model_matrix * Vec4<T>{vertex.x(), vertex.y(), vertex.z(), T{1}};
-                  const T invw = T{1} / v.w();
-                  return {v.x() * invw, v.y() * invw, v.z() * invw};
-              });
-
-    vector<Vec3<T>> world_normals(size(normals));
-    transform(execution::par_unseq, begin(normals), end(normals), begin(world_normals),
-              [&](const Vec3<T> &normal) { return *(normal_matrix * normal).normalized(); });
-
-    const Mat4x4<T> vp = projection_matrix * view_matrix;
-    vector<Vec4<T>> screen_vertices(size(vertices));
-    auto project_single = [&](const Vec3<T> &world_point) -> Vec4<T> {
-        const auto clip = vp * Vec4<T>{world_point.x(), world_point.y(), world_point.z(), T{1}};
-        CHECK(abs(clip.w()) > T(1e-6));
-        const Vec3<T> ndc = {clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w()};
-        const T sx = (ndc.x() * T{0.5} + T{0.5}) * static_cast<T>(resolution.width);
-        const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
-        return {sx, sy, ndc.z(), clip.w()};
-    };
-
-    screen_vertices.resize(world_vertices.size());
-    transform(execution::par_unseq, begin(world_vertices), end(world_vertices), begin(screen_vertices), project_single);
-    return {
-        std::move(world_vertices),
-        std::move(world_normals),
-        texture_coordinates,
-        std::move(screen_vertices),
-    };
-}
-
-template <std::floating_point T>
 constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, const Resolution &resolution) noexcept
 {
     CHECK(abs(clip_position.w()) > T(1e-6));
@@ -362,50 +285,6 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     const T sy = (T{1} - (ndc.y() * T{0.5} + T{0.5})) * static_cast<T>(resolution.height);
     return {sx, sy, ndc.z()};
 }
-
-template <std::floating_point T>
-inline VertexData<T> vertex_shader(const Mesh<T> &mesh, const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix,
-                                   const Mat4x4<T> &projection_matrix, const Resolution &resolution) noexcept
-{
-    return vertex_shader(mesh.vertices, mesh.normals, mesh.texture_coordinates, model_matrix, view_matrix,
-                         projection_matrix, resolution);
-}
-
-template <std::floating_point T> class DefaultVertexShader
-{
-  public:
-    DefaultVertexShader(const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix, const Mat4x4<T> &projection_matrix)
-        : _model_matrix(model_matrix), _view_projection_matrix(projection_matrix * view_matrix)
-    {
-        Mat3x3<T> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
-                          model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
-                          model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
-
-        _normal_matrix = mat3.inverse().value().transposed();
-    }
-
-    [[nodiscard]] constexpr inline OutputVertex<T> operator()(const InputVertex<T> &vertex) const
-    {
-        using namespace std;
-        const Vec4<T> world_position =
-            _model_matrix * Vec4<T>{vertex.position.x(), vertex.position.y(), vertex.position.z(), T{1}};
-        const T invw = T{1} / world_position.w();
-
-        OutputVertex<T> out;
-        out.world_position.x() = world_position.x() * invw;
-        out.world_position.y() = world_position.y() * invw;
-        out.world_position.z() = world_position.z() * invw;
-        out.world_normal = *(_normal_matrix * vertex.normal).normalized();
-        out.texture_coordinates = vertex.texture_coordinates;
-        out.clip_position = _view_projection_matrix * world_position;
-        return out;
-    }
-
-  private:
-    Mat4x4<T> _model_matrix;
-    Mat4x4<T> _view_projection_matrix;
-    Mat3x3<T> _normal_matrix;
-};
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)
 {

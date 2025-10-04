@@ -104,19 +104,19 @@ inline void render(ColorImage<T> &linear_image, const std::vector<OutputVertex<T
 // ADD AA templates
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> struct Renderer
 {
-    // TODO: Pass in generic vs/fs
+    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
     void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                 const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
-                const DefaultVertexShader<T> vs, const DefaultFragmentShader<T> &fs,
+                const VertexShader vertex_shader, const FragmentShader &fragment_shader,
                 DepthBuffer<T, AARows, AACols> &depth_buffer, ColorImage<T> &linear_image)
     {
-        CHECK(depth_buffer.resolution() == linear_image.resolution());
-
         using namespace std;
+        const Resolution resolution = linear_image.resolution();
+        CHECK(depth_buffer.resolution() == resolution);
+
         const size_t vertex_count = Face::size * size(faces);
         vertex_buffer.resize(vertex_count);
         screen_coordinates.resize(vertex_count);
-        const Resolution resolution = linear_image.resolution();
         if (resolution != index_buffer.resolution())
         {
             index_buffer = IndexBuffer<AARows, AACols>(linear_image.width(), linear_image.height());
@@ -131,7 +131,7 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> stru
             for (size_t vertex_index = 0; vertex_index < Face::size; ++vertex_index)
             {
                 const size_t output_index = face_index * Face::size + vertex_index;
-                const OutputVertex<T> output_vertex = vs({
+                const OutputVertex<T> output_vertex = vertex_shader({
                     positions[face.vertex_indices[vertex_index]],
                     normals[face.normal_indices[vertex_index]],
                     texture_coordinates[face.texture_indices[vertex_index]],
@@ -142,7 +142,7 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> stru
             }
         });
         rasterize_triangles(screen_coordinates, depth_buffer, index_buffer);
-        ::render(linear_image, vertex_buffer, screen_coordinates, fs, index_buffer);
+        ::render(linear_image, vertex_buffer, screen_coordinates, fragment_shader, index_buffer);
     }
 
     IndexBuffer<AARows, AACols> index_buffer;

@@ -16,9 +16,8 @@ template <std::floating_point T> struct InputVertex
 
 template <std::floating_point T> struct OutputVertex
 {
-    // TODO: Remove world prefix
-    Vec3<T> world_position;
-    Vec3<T> world_normal;
+    Vec3<T> position;
+    Vec3<T> normal;
     Vec2<T> texture_coordinates;
     Vec4<T> clip_position;
 };
@@ -49,10 +48,10 @@ template <std::floating_point T> class DefaultVertexShader
         const T invw = T{1} / world_position.w();
 
         OutputVertex<T> out;
-        out.world_position.x() = world_position.x() * invw;
-        out.world_position.y() = world_position.y() * invw;
-        out.world_position.z() = world_position.z() * invw;
-        out.world_normal = *(_normal_matrix * vertex.normal).normalized();
+        out.position.x() = world_position.x() * invw;
+        out.position.y() = world_position.y() * invw;
+        out.position.z() = world_position.z() * invw;
+        out.normal = *(_normal_matrix * vertex.normal).normalized();
         out.texture_coordinates = vertex.texture_coordinates;
         out.clip_position = _view_projection_matrix * world_position;
         return out;
@@ -66,8 +65,8 @@ template <std::floating_point T> class DefaultVertexShader
 
 template <std::floating_point T> struct Fragment
 {
-    Vec3<T> world_position;
-    Vec3<T> world_normal;
+    Vec3<T> position;
+    Vec3<T> normal;
     Vec2<T> uv;
 };
 
@@ -138,7 +137,7 @@ template <std::floating_point T> struct DefaultFragmentShader
         for (const auto &pl : point_lights)
         {
             const RGB<T> light =
-                sample_light(fragment.world_position, fragment.world_normal, camera_position, object_shininess, pl);
+                sample_light(fragment.position, fragment.normal, camera_position, object_shininess, pl);
             total.r += light.r;
             total.g += light.g;
             total.b += light.b;
@@ -147,7 +146,7 @@ template <std::floating_point T> struct DefaultFragmentShader
         for (const auto &dl : directional_lights)
         {
             const RGB<T> light =
-                sample_light(fragment.world_position, fragment.world_normal, camera_position, object_shininess, dl);
+                sample_light(fragment.position, fragment.normal, camera_position, object_shininess, dl);
             total.r += light.r;
             total.g += light.g;
             total.b += light.b;

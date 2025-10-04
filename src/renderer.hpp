@@ -84,9 +84,8 @@ inline void render(ColorImage<T> &linear_image, const std::vector<OutputVertex<T
 
                     const Vec3<T> bary = barycentric({px, py}, sv1, sv2, sv3);
                     const Vec3<T> world_position =
-                        bary.x() * v1.world_position + bary.y() * v2.world_position + bary.z() * v3.world_position;
-                    const Vec3<T> world_normal =
-                        bary.x() * v1.world_normal + bary.y() * v2.world_normal + bary.z() * v3.world_normal;
+                        bary.x() * v1.position + bary.y() * v2.position + bary.z() * v3.position;
+                    const Vec3<T> world_normal = bary.x() * v1.normal + bary.y() * v2.normal + bary.z() * v3.normal;
                     const Vec2<T> uv =
                         texture_uv(bary, v1.clip_position.w(), v2.clip_position.w(), v3.clip_position.w(),
                                    v1.texture_coordinates, v2.texture_coordinates, v3.texture_coordinates);

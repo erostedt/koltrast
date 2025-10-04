@@ -124,15 +124,38 @@ template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction,
 template <std::floating_point T> struct DefaultFragmentShader
 {
     Vec3<T> camera_position;
-    Lights<T> lights;
     Texture texture;
     T object_shininess;
+    std::vector<PointLight<T>> point_lights;
+    std::vector<DirectionalLight<T>> directional_lights;
+    T ambient = T{0};
 
     [[nodiscard]] constexpr inline RGB<T> operator()(const Fragment<T> &fragment) const
     {
         const RGB<T> object_color = sample_bilinear(fragment.uv, texture);
-        const RGB<T> light =
-            accumulate_light(lights, fragment.world_position, fragment.world_normal, camera_position, object_shininess);
+
+        RGB<T> total = {ambient, ambient, ambient};
+        for (const auto &pl : point_lights)
+        {
+            const RGB<T> light =
+                sample_light(fragment.world_position, fragment.world_normal, camera_position, object_shininess, pl);
+            total.r += light.r;
+            total.g += light.g;
+            total.b += light.b;
+        }
+
+        for (const auto &dl : directional_lights)
+        {
+            const RGB<T> light =
+                sample_light(fragment.world_position, fragment.world_normal, camera_position, object_shininess, dl);
+            total.r += light.r;
+            total.g += light.g;
+            total.b += light.b;
+        }
+        const T r = std::clamp(total.r, T{0}, T{1});
+        const T g = std::clamp(total.g, T{0}, T{1});
+        const T b = std::clamp(total.b, T{0}, T{1});
+        const RGB<T> light = {r, g, b};
         return light * object_color;
     }
 };

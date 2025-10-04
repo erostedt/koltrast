@@ -10,7 +10,6 @@
 #include "camera.hpp"
 #include "counting_iterator.hpp"
 #include "image.hpp"
-#include "light.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "rasterizer.hpp"
@@ -113,12 +112,13 @@ int main(int argc, char **argv)
 
     size_t degrees = 0;
 
-    const Lights<f32> lights = {
-        .ambient = 0.3f,
+    const DefaultFragmentShader<f32> fragment_shader = {
+        .camera_position = camera_position,
+        .texture = texture,
+        .object_shininess = 16.0f,
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
-        .directional_lights = {}};
-
-    const DefaultFragmentShader<f32> fragment_shader = {camera_position, lights, texture, 16.0f};
+        .directional_lights = {},
+        .ambient = 0.3f};
 
     Renderer<f32> renderer;
     while (!window.should_close)

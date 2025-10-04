@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <concepts>
-#include <vector>
 
 #include "image.hpp"
 #include "types.hpp"
@@ -20,39 +19,6 @@ template <std::floating_point T> struct DirectionalLight
     RGB<T> color;
     T specular;
 };
-
-template <std::floating_point T> struct Lights
-{
-    T ambient = T{0};
-    std::vector<PointLight<T>> point_lights;
-    std::vector<DirectionalLight<T>> directional_lights;
-};
-
-template <std::floating_point T>
-RGB<T> accumulate_light(const Lights<T> &lights, const Vec3<T> &world_position, const Vec3<T> &world_normal,
-                        const Vec3<T> &camera_position, T object_shininess)
-{
-    RGB<T> total = {lights.ambient, lights.ambient, lights.ambient};
-    for (const auto &pl : lights.point_lights)
-    {
-        const RGB<T> light = sample_light(world_position, world_normal, camera_position, object_shininess, pl);
-        total.r += light.r;
-        total.g += light.g;
-        total.b += light.b;
-    }
-
-    for (const auto &dl : lights.directional_lights)
-    {
-        const RGB<T> light = sample_light(world_position, world_normal, camera_position, object_shininess, dl);
-        total.r += light.r;
-        total.g += light.g;
-        total.b += light.b;
-    }
-    T r = std::clamp(total.r, T{0}, T{1});
-    T g = std::clamp(total.g, T{0}, T{1});
-    T b = std::clamp(total.b, T{0}, T{1});
-    return {r, g, b};
-}
 
 template <std::floating_point T>
 [[nodiscard]] constexpr inline RGB<T> directional_light(const Vec3<T> &world_position, const Vec3<T> &world_normal,

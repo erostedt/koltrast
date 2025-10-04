@@ -33,6 +33,7 @@ template <std::floating_point T> struct InputVertex
 
 template <std::floating_point T> struct OutputVertex
 {
+    // TODO: Remove world prefix
     Vec3<T> world_position;
     Vec3<T> world_normal;
     Vec2<T> texture_coordinates;
@@ -362,26 +363,38 @@ inline VertexData<T> vertex_shader(const Mesh<T> &mesh, const Mat4x4<T> &model_m
 
 template <std::floating_point T> class DefaultVertexShader
 {
-    Mat4x4<T> model_matrix;
-    Mat4x4<T> view_projection_matrix;
-    Mat4x4<T> normal_matrix;
+  public:
+    DefaultVertexShader(const Mat4x4<T> &model_matrix, const Mat4x4<T> &view_matrix, const Mat4x4<T> &projection_matrix)
+        : _model_matrix(model_matrix), _view_projection_matrix(projection_matrix * view_matrix)
+    {
+        Mat3x3<T> mat3 = {model_matrix[0, 0], model_matrix[0, 1], model_matrix[0, 2],
+                          model_matrix[1, 0], model_matrix[1, 1], model_matrix[1, 2],
+                          model_matrix[2, 0], model_matrix[2, 1], model_matrix[2, 2]};
+
+        _normal_matrix = mat3.inverse().value().transposed();
+    }
 
     [[nodiscard]] constexpr inline OutputVertex<T> operator()(const InputVertex<T> &vertex) const
     {
         using namespace std;
         const Vec4<T> world_position =
-            model_matrix * Vec4<T>{vertex.position.x(), vertex.position.y(), vertex.position.z(), T{1}};
+            _model_matrix * Vec4<T>{vertex.position.x(), vertex.position.y(), vertex.position.z(), T{1}};
         const T invw = T{1} / world_position.w();
 
         OutputVertex<T> out;
         out.world_position.x() = world_position.x() * invw;
         out.world_position.y() = world_position.y() * invw;
         out.world_position.z() = world_position.z() * invw;
-        out.world_normal = *(normal_matrix * vertex.normal).normalized();
+        out.world_normal = *(_normal_matrix * vertex.normal).normalized();
         out.texture_coordinates = vertex.texture_coordinates;
-        out.clip_position = world_position * world_position;
+        out.clip_position = _view_projection_matrix * world_position;
         return out;
     }
+
+  private:
+    Mat4x4<T> _model_matrix;
+    Mat4x4<T> _view_projection_matrix;
+    Mat3x3<T> _normal_matrix;
 };
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)

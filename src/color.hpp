@@ -158,7 +158,7 @@ constexpr inline f32 linear_to_srgbf(f32 c) noexcept
 
 constexpr inline f64 linear_to_srgbf(f64 c) noexcept
 {
-    c = std::clamp(c * 1024.0, 0.0, 1024.0);
+    c = std::clamp(c * 1024.5, 0.0, 1024.0);
     const f64 l = std::floor(c);
     const f64 t = c - l;
     const size_t i = (size_t)l;

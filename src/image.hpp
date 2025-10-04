@@ -104,7 +104,7 @@ template <std::floating_point T> using ColorImage = Image<RGB<T>>;
 template <std::floating_point T> inline void linear_to_srgb(ColorImage<T> &linear) noexcept
 {
     using namespace std;
-    std::transform(execution::par, begin(linear), end(linear), begin(linear),
+    std::transform(execution::par_unseq, begin(linear), end(linear), begin(linear),
                    [](const RGB<T> &color) -> RGB<T> { return linear_to_srgbf(color); });
 }
 

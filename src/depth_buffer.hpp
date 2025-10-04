@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <execution>
 
 #include "image.hpp"
 
@@ -12,8 +13,9 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>
 constexpr inline void reset_depth_buffer(DepthBuffer<T, AARows, AACols> &buffer) noexcept
 {
     using namespace std;
-    for_each(execution::par_unseq, begin(buffer), end(buffer),
-             [](Matrix<T, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<T>::infinity()); });
+    Matrix<T, AARows, AACols> invalid;
+    fill(begin(invalid), end(invalid), numeric_limits<T>::infinity());
+    fill(execution::par_unseq, begin(buffer), end(buffer), invalid);
 }
 
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows>

@@ -361,8 +361,9 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
         index_buffer = IndexBuffer<AARows, AACols>(linear_image.width(), linear_image.height());
     }
 
-    for_each(execution::par_unseq, begin(index_buffer), end(index_buffer),
-             [](Matrix<size_t, AARows, AACols> &cell) { fill(begin(cell), end(cell), numeric_limits<size_t>::max()); });
+    Matrix<size_t, AARows, AACols> invalid;
+    fill(begin(invalid), end(invalid), numeric_limits<size_t>::max());
+    fill(execution::par_unseq, begin(index_buffer), end(index_buffer), invalid);
 
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(size(faces)), [&](size_t face_index) {
         const Face &face = faces[face_index];

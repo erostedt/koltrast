@@ -70,9 +70,10 @@ class LimitFps
     steady_clock::time_point start_ns;
 };
 
-void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Camera<f32> &camera,
-                      const Vec3f &camera_position, const Mat4x4f &view)
+inline void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Camera<f32> &camera,
+                             const Vec3f &camera_position, const Mat4x4f &view) noexcept
 {
+    // Thid is very slow
     const auto view_port = create_view_port(camera, camera_position, view);
     std::for_each(std::execution::par_unseq, counting_iterator(0), counting_iterator(image.size()), [&](size_t i) {
         size_t x = i % image.width();
@@ -84,6 +85,12 @@ void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, co
         const Vec3 ray_direction = *(pixel_center - ray_origin).normalized();
         image[x, y] = sample_cubemap(ray_direction, cubemap);
     });
+}
+
+inline void clear_background(Image<RGB<f32>> &image, const RGB<f32> &color) noexcept
+{
+    using namespace std;
+    fill(execution::par_unseq, begin(image), end(image), color);
 }
 
 int main(int argc, char **argv)
@@ -121,7 +128,7 @@ int main(int argc, char **argv)
     while (!window.should_close)
     {
         PrintFps print_fps;
-        LimitFps limitfps(60.0);
+        // LimitFps limitfps(60.0);
         auto events = window.poll_events();
         for (auto &event : events)
         {
@@ -136,7 +143,8 @@ int main(int argc, char **argv)
         const DefaultVertexShader<f32> vertex_shader(model, view, proj);
 
         reset_depth_buffer(depth_buffer);
-        clear_background(image, cubemap, camera, camera_position, view);
+        // clear_background(image, cubemap, camera, camera_position, view);
+        clear_background(image, BLACK<f32>);
         DrawFrame frame(window);
 
         renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,

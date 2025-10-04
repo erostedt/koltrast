@@ -118,7 +118,7 @@ int main(int argc, char **argv)
         .directional_lights = {},
         .ambient = 0.3f};
 
-    Renderer<f32> renderer;
+    auto renderer = create_compatible_renderer(depth_buffer);
     while (!window.should_close)
     {
         PrintFps print_fps;

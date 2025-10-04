@@ -29,10 +29,9 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer<f32, 2, 2>(camera.resolution.width, camera.resolution.height);
 
-    Renderer<f32> renderer;
-
+    auto renderer = create_compatible_renderer(depth_buffer);
     const DefaultFragmentShader<f32> fragment_shader = {
         .camera_position = camera_position,
         .texture = texture,

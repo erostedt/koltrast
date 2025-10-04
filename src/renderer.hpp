@@ -163,17 +163,15 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     return {sx, sy, ndc.z()};
 }
 
-// ADD AA templates
 template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> class Renderer
 {
-
   public:
     template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader, size_t TileRows = 2,
               size_t TileCols = TileRows>
-    void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
-                const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
-                const VertexShader vertex_shader, const FragmentShader &fragment_shader,
-                DepthBuffer<T, AARows, AACols> &depth_buffer, ColorImage<T> &linear_image)
+    constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
+                                 const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
+                                 const VertexShader vertex_shader, const FragmentShader &fragment_shader,
+                                 DepthBuffer<T, AARows, AACols> &depth_buffer, ColorImage<T> &linear_image) noexcept
     {
         using namespace std;
         const Resolution resolution = linear_image.resolution();
@@ -380,3 +378,10 @@ template <std::floating_point T, size_t AARows = 1, size_t AACols = AARows> clas
     std::vector<Vec3<T>> screen_coordinates{};
     static constexpr Matrix<Vec2<T>, AARows, AACols> offsets = make_aa_grid<T, AARows, AACols>();
 };
+
+template <std::floating_point T, size_t AARows, size_t AACols>
+constexpr inline Renderer<T, AARows, AACols> create_compatible_renderer(
+    const DepthBuffer<T, AARows, AACols> & /*depth_buffer*/) noexcept
+{
+    return Renderer<T, AARows, AACols>();
+}

@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height);
+    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height, 1);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         .directional_lights = {},
         .ambient = 0.3f};
 
-    auto renderer = create_compatible_renderer(depth_buffer);
+    Renderer<f32> renderer;
     while (!window.should_close)
     {
         PrintFps print_fps;
@@ -143,12 +143,11 @@ int main(int argc, char **argv)
         const DefaultVertexShader<f32> vertex_shader(model, view, proj);
 
         reset_depth_buffer(depth_buffer);
-        // clear_background(image, cubemap, camera, camera_position, view);
         clear_background(image, BLACK<f32>);
         DrawFrame frame(window);
 
         renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                        fragment_shader, depth_buffer, image);
+                        fragment_shader, 1, 1, depth_buffer, image);
         linear_to_srgb(image);
         frame.blit(image);
     }

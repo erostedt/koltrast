@@ -9,7 +9,6 @@
 
 #include "camera.hpp"
 #include "counting_iterator.hpp"
-#include "depth_buffer.hpp"
 #include "image.hpp"
 #include "matrix.hpp"
 #include "obj.hpp"
@@ -112,7 +111,6 @@ int main(int argc, char **argv)
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
     const RenderSpecification<f32> render_spec;
-    auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height, 1);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
@@ -143,12 +141,12 @@ int main(int argc, char **argv)
         const auto model = model_matrix<f32>({0.0f, 0.0f, 0.0f}, {0.0f, (f32)degrees, 0.0f}, {1.0f, 1.0f, 1.0f});
         const DefaultVertexShader<f32> vertex_shader(model, view, proj);
 
-        reset_depth_buffer(depth_buffer);
         clear_background(image, BLACK<f32>);
         DrawFrame frame(window);
 
-        renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                        fragment_shader, render_spec, depth_buffer, image);
+        RenderFrame<f32> render_frame = renderer.new_frame();
+        render_frame.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
+                            fragment_shader, render_spec, image);
         linear_to_srgb(image);
         frame.blit(image);
     }

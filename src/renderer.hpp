@@ -356,16 +356,6 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
     CHECK(depth_buffer.height() == linear_image.height());
 
     const std::vector<Vec2<T>> sample_offsets = make_aa_grid<T>(render_spec.aa_rows, render_spec.aa_cols);
-
-    const size_t vertex_count = Face::size * size(faces);
-    vertex_buffer.resize(vertex_count);
-    screen_coordinates.resize(vertex_count);
-    if ((depth_buffer.width() != index_buffer.width()) || (depth_buffer.height() != index_buffer.height()) ||
-        (depth_buffer.depth() != index_buffer.depth()))
-    {
-        index_buffer = IndexBuffer(depth_buffer.width(), depth_buffer.height(), depth_buffer.depth());
-    }
-
     fill(execution::par_unseq, begin(index_buffer), end(index_buffer), numeric_limits<size_t>::max());
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(size(faces)), [&](size_t face_index) {
         const Face &face = faces[face_index];
@@ -388,21 +378,57 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
     render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer, linear_image);
 }
 
-template <std::floating_point T> class Renderer
+template <std::floating_point T> class RenderFrame
 {
   public:
+    RenderFrame(DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer, std::vector<OutputVertex<T>> &vertex_buffer,
+                std::vector<Vec3<T>> &screen_coordinates)
+        : _depth_buffer(depth_buffer), _index_buffer(index_buffer), _vertex_buffer(vertex_buffer),
+          _screen_coordinates(screen_coordinates)
+    {
+        using namespace std;
+        fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
+    }
+
     template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
     constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                                  const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                                  const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
-                                 const RenderSpecification<T> &render_spec, DepthBuffer<T> &depth_buffer,
-                                 ColorImage<T> &linear_image) noexcept
+                                 const RenderSpecification<T> &render_spec, ColorImage<T> &linear_image) noexcept
     {
+        const size_t aa_samples = render_spec.aa_rows * render_spec.aa_cols;
+        if ((linear_image.width() != _index_buffer.width()) || (linear_image.height() != _index_buffer.height()) ||
+            (aa_samples != _index_buffer.depth()))
+        {
+            _index_buffer = IndexBuffer(linear_image.width(), linear_image.height(), aa_samples);
+            _depth_buffer = DepthBuffer<T>(linear_image.width(), linear_image.height(), aa_samples);
+        }
+
+        const size_t vertex_count = Face::size * size(faces);
+        _vertex_buffer.resize(vertex_count);
+        _screen_coordinates.resize(vertex_count);
+
         ::render(faces, positions, normals, texture_coordinates, vertex_shader, fragment_shader, render_spec,
-                 index_buffer, vertex_buffer, screen_coordinates, depth_buffer, linear_image);
+                 _index_buffer, _vertex_buffer, _screen_coordinates, _depth_buffer, linear_image);
     }
 
   private:
+    DepthBuffer<T> &_depth_buffer;
+    IndexBuffer &_index_buffer;
+    std::vector<OutputVertex<T>> &_vertex_buffer;
+    std::vector<Vec3<T>> &_screen_coordinates;
+};
+
+template <std::floating_point T> class Renderer
+{
+  public:
+    RenderFrame<T> new_frame()
+    {
+        return RenderFrame<T>(depth_buffer, index_buffer, vertex_buffer, screen_coordinates);
+    }
+
+  private:
+    DepthBuffer<T> depth_buffer{};
     IndexBuffer index_buffer{};
     std::vector<OutputVertex<T>> vertex_buffer{};
     std::vector<Vec3<T>> screen_coordinates{};

@@ -53,6 +53,7 @@ class XWindow
         XMapWindow(window.display, window.window);
 
         window.backing_buffer.resize(width * height, 0u);
+        // TODO: (eric) Make sure that alpha is actually enabled
         window.image =
             XCreateImage(window.display, DefaultVisual(window.display, window.screen),
                          (u32)DefaultDepth(window.display, window.screen), ZPixmap, 0,
@@ -151,17 +152,22 @@ class DrawFrame
         const auto rmask = (u32)window.image->red_mask;
         const auto gmask = (u32)window.image->green_mask;
         const auto bmask = (u32)window.image->blue_mask;
+        const auto amask = ~(rmask | gmask | bmask);
+
+        CHECK((rmask | gmask | bmask | amask) == 0xffffffff);
 
         const auto rshift = countr_zero(rmask);
         const auto gshift = countr_zero(gmask);
         const auto bshift = countr_zero(bmask);
+        const auto ashift = countr_zero(amask);
 
-        // TODO: (eric) Use alpha here
         const auto pack_pixel = [&](const RGBA<T> &color) {
             const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
             const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
             const auto b = std::clamp(color.b * T{255}, T{0}, T{255});
-            return ((u32)r << rshift & rmask) | ((u32)g << gshift & gmask) | ((u32)b << bshift & bmask);
+            const auto a = std::clamp(color.a * T{255}, T{0}, T{255});
+            return ((u32)r << rshift & rmask) | ((u32)g << gshift & gmask) | ((u32)b << bshift & bmask) |
+                   ((u32)a << ashift & amask);
         };
 
         u32 *dst = reinterpret_cast<u32 *>(window.image->data);

@@ -14,7 +14,6 @@
 #include "depth_buffer.hpp"
 #include "image.hpp"
 #include "math.hpp"
-#include "matrix.hpp"
 #include "obj.hpp"
 #include "shader.hpp"
 #include "types.hpp"
@@ -104,20 +103,21 @@ template <std::floating_point T> constexpr inline bool inside_triangle(const Vec
     return bary.x() >= 0 && bary.y() >= 0 && bary.z() >= 0;
 }
 
-template <std::floating_point T, size_t Rows, size_t Cols>
-constexpr inline Matrix<BoundingBox<T>, Rows, Cols> make_grid(const Resolution &resolution) noexcept
+template <std::floating_point T>
+constexpr inline std::vector<BoundingBox<T>> make_grid(size_t rows, size_t cols, const Resolution &resolution) noexcept
 {
     using namespace std;
-    Matrix<BoundingBox<T>, Rows, Cols> grid;
-    for (size_t y = 0; y < Rows; ++y)
+    std::vector<BoundingBox<T>> grid;
+    grid.reserve(rows * cols);
+    for (size_t y = 0; y < rows; ++y)
     {
-        for (size_t x = 0; x < Cols; ++x)
+        for (size_t x = 0; x < cols; ++x)
         {
-            T sx = (T)x * (T)resolution.width / (T)Cols;
-            T sy = (T)y * (T)resolution.height / (T)Rows;
-            T ex = min((T)(x + 1) * (T)resolution.width / (T)Cols, (T)resolution.width - T{1});
-            T ey = min((T)(y + 1) * (T)resolution.height / (T)Rows, (T)resolution.height - T{1});
-            grid[x, y] = {{sx, sy}, {ex, ey}};
+            T sx = (T)x * (T)resolution.width / (T)cols;
+            T sy = (T)y * (T)resolution.height / (T)rows;
+            T ex = min((T)(x + 1) * (T)resolution.width / (T)cols, (T)resolution.width - T{1});
+            T ey = min((T)(y + 1) * (T)resolution.height / (T)rows, (T)resolution.height - T{1});
+            grid.push_back({{sx, sy}, {ex, ey}});
         }
     }
 
@@ -223,18 +223,20 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec3<T> &p
     }
 }
 
-template <std::floating_point T, size_t TileRows = 8, size_t TileCols = TileRows>
-inline void rasterize_triangles(const std::vector<Vec3<T>> &screen_coordinates,
-                                const std::vector<Vec2<T>> &sample_offsets, DepthBuffer<T> &depth_buffer,
-                                IndexBuffer &index_buffer) noexcept
+template <std::floating_point T>
+inline void rasterize_triangles(const std::vector<Vec3<T>> &screen_coordinates, const size_t tile_rows,
+                                const size_t tile_cols, const std::vector<Vec2<T>> &sample_offsets,
+                                DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
 {
     CHECK(screen_coordinates.size() % 3 == 0);
+    CHECK(tile_rows > 0);
+    CHECK(tile_cols > 0);
     CHECK(depth_buffer.width() == index_buffer.width());
     CHECK(depth_buffer.height() == index_buffer.height());
     CHECK(depth_buffer.depth() == index_buffer.depth());
 
     using namespace std;
-    const auto grid = make_grid<T, TileRows, TileCols>({depth_buffer.width(), depth_buffer.height()});
+    const auto grid = make_grid<T>(tile_rows, tile_cols, {depth_buffer.width(), depth_buffer.height()});
     for_each(execution::par_unseq, begin(grid), end(grid), [&](const BoundingBox<T> &bounds) {
         for (size_t i = 0; i < screen_coordinates.size() / 3; ++i)
         {
@@ -328,8 +330,23 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     return {sx, sy, ndc.z()};
 }
 
-template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader, size_t TileRows = 8,
-          size_t TileCols = TileRows>
+template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
+struct RenderSpecification
+{
+    VertexShader &vertex_shader;
+    FragmentShader &fragment_shader;
+    size_t tile_rows = 8;
+    size_t tile_cols = 8;
+
+    // TODO: (eric) Allow different AA methods.
+    // AASettings<T> aa;
+    size_t aa_rows = 1;
+    size_t aa_cols = 1;
+
+    // BlendFunction bf;
+};
+
+template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
 constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                              const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                              const VertexShader &vertex_shader, const FragmentShader &fragment_shader, size_t aa_rows,
@@ -369,7 +386,7 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
                 clip_to_screen_space(output_vertex.clip_position, linear_image.resolution());
         }
     });
-    rasterize_triangles<T, TileRows, TileCols>(screen_coordinates, sample_offsets, depth_buffer, index_buffer);
+    rasterize_triangles<T>(screen_coordinates, 8, 8, sample_offsets, depth_buffer, index_buffer);
     render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer, linear_image);
 }
 

@@ -111,6 +111,7 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
+    const RenderSpecification<f32> render_spec;
     auto depth_buffer = create_depth_buffer<f32>(camera.resolution.width, camera.resolution.height, 1);
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
@@ -147,7 +148,7 @@ int main(int argc, char **argv)
         DrawFrame frame(window);
 
         renderer.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                        fragment_shader, 1, 1, depth_buffer, image);
+                        fragment_shader, render_spec, depth_buffer, image);
         linear_to_srgb(image);
         frame.blit(image);
     }

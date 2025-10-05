@@ -330,11 +330,8 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     return {sx, sy, ndc.z()};
 }
 
-template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
-struct RenderSpecification
+template <std::floating_point T> struct RenderSpecification
 {
-    VertexShader &vertex_shader;
-    FragmentShader &fragment_shader;
     size_t tile_rows = 8;
     size_t tile_cols = 8;
 
@@ -349,16 +346,16 @@ struct RenderSpecification
 template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
 constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                              const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
-                             const VertexShader &vertex_shader, const FragmentShader &fragment_shader, size_t aa_rows,
-                             size_t aa_cols, IndexBuffer &index_buffer, std::vector<OutputVertex<T>> &vertex_buffer,
-                             std::vector<Vec3<T>> &screen_coordinates, DepthBuffer<T> &depth_buffer,
-                             ColorImage<T> &linear_image) noexcept
+                             const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
+                             const RenderSpecification<T> &render_spec, IndexBuffer &index_buffer,
+                             std::vector<OutputVertex<T>> &vertex_buffer, std::vector<Vec3<T>> &screen_coordinates,
+                             DepthBuffer<T> &depth_buffer, ColorImage<T> &linear_image) noexcept
 {
     using namespace std;
     CHECK(depth_buffer.width() == linear_image.width());
     CHECK(depth_buffer.height() == linear_image.height());
 
-    const std::vector<Vec2<T>> sample_offsets = make_aa_grid<T>(aa_rows, aa_cols);
+    const std::vector<Vec2<T>> sample_offsets = make_aa_grid<T>(render_spec.aa_rows, render_spec.aa_cols);
 
     const size_t vertex_count = Face::size * size(faces);
     vertex_buffer.resize(vertex_count);
@@ -386,22 +383,22 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
                 clip_to_screen_space(output_vertex.clip_position, linear_image.resolution());
         }
     });
-    rasterize_triangles<T>(screen_coordinates, 8, 8, sample_offsets, depth_buffer, index_buffer);
+    rasterize_triangles<T>(screen_coordinates, render_spec.tile_rows, render_spec.tile_cols, sample_offsets,
+                           depth_buffer, index_buffer);
     render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer, linear_image);
 }
 
 template <std::floating_point T> class Renderer
 {
   public:
-    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader, size_t TileRows = 8,
-              size_t TileCols = TileRows>
+    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
     constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                                  const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                                  const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
-                                 size_t aa_rows, size_t aa_cols, DepthBuffer<T> &depth_buffer,
+                                 const RenderSpecification<T> &render_spec, DepthBuffer<T> &depth_buffer,
                                  ColorImage<T> &linear_image) noexcept
     {
-        ::render(faces, positions, normals, texture_coordinates, vertex_shader, fragment_shader, aa_rows, aa_cols,
+        ::render(faces, positions, normals, texture_coordinates, vertex_shader, fragment_shader, render_spec,
                  index_buffer, vertex_buffer, screen_coordinates, depth_buffer, linear_image);
     }
 

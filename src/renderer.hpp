@@ -9,16 +9,29 @@
 #include <limits>
 #include <vector>
 
+#include "buffer3.hpp"
 #include "check.hpp"
 #include "counting_iterator.hpp"
-#include "depth_buffer.hpp"
 #include "image.hpp"
 #include "math.hpp"
 #include "obj.hpp"
 #include "shader.hpp"
 #include "types.hpp"
 
+template <std::floating_point T> using DepthBuffer = Buffer3<T>;
 using IndexBuffer = Buffer3<size_t>;
+
+template <std::floating_point T> inline void reset_depth_buffer(const DepthBuffer<T> &depth_buffer) noexcept
+{
+    using namespace std;
+    fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
+}
+
+inline void reset_index_buffer(const IndexBuffer &index_buffer) noexcept
+{
+    using namespace std;
+    fill(execution::par_unseq, begin(index_buffer), end(index_buffer), numeric_limits<size_t>::max());
+}
 
 template <std::floating_point T> inline std::vector<Vec2<T>> make_aa_grid(size_t rows, size_t cols)
 {
@@ -255,8 +268,9 @@ inline void render_vertices(const std::vector<Vec3<T>> &screen_coordinates,
                             ColorImage<T> &linear_image) noexcept
 {
     CHECK(index_buffer.depth() == sample_offsets.size());
+
     using namespace std;
-    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(index_buffer.size()), [&](size_t i) {
+    for_each(execution::par_unseq, counting_iterator(0), counting_iterator(size(linear_image)), [&](size_t i) {
         size_t x = i % index_buffer.width();
         size_t y = i / index_buffer.width();
         std::span<const size_t> indicies = index_buffer.slice(x, y);
@@ -373,8 +387,10 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
                 clip_to_screen_space(output_vertex.clip_position, linear_image.resolution());
         }
     });
+
     rasterize_triangles<T>(screen_coordinates, render_spec.tile_rows, render_spec.tile_cols, sample_offsets,
                            depth_buffer, index_buffer);
+
     render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer, linear_image);
 }
 
@@ -396,12 +412,14 @@ template <std::floating_point T> class RenderFrame
                                  const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
                                  const RenderSpecification<T> &render_spec, ColorImage<T> &linear_image) noexcept
     {
+        using namespace std;
         const size_t aa_samples = render_spec.aa_rows * render_spec.aa_cols;
         if ((linear_image.width() != _index_buffer.width()) || (linear_image.height() != _index_buffer.height()) ||
             (aa_samples != _index_buffer.depth()))
         {
             _index_buffer = IndexBuffer(linear_image.width(), linear_image.height(), aa_samples);
             _depth_buffer = DepthBuffer<T>(linear_image.width(), linear_image.height(), aa_samples);
+            fill(execution::par_unseq, begin(_depth_buffer), end(_depth_buffer), numeric_limits<T>::infinity());
         }
 
         const size_t vertex_count = Face::size * size(faces);

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <concepts>
-#include <execution>
 #include <span>
+#include <vector>
 
 template <typename T> class Buffer3
 {
@@ -43,7 +42,8 @@ template <typename T> class Buffer3
 
     [[nodiscard]] constexpr inline size_t ravel_index(size_t x, size_t y, size_t z) const noexcept
     {
-        return (y * width() + x) * depth() + z;
+        size_t index = (y * width() + x) * depth() + z;
+        return index;
     }
 
     [[nodiscard]] constexpr inline T &operator[](size_t x, size_t y, size_t z) noexcept
@@ -84,16 +84,14 @@ template <typename T> class Buffer3
     [[nodiscard]] constexpr inline std::span<T> slice(size_t x, size_t y) noexcept
     {
         size_t from = ravel_index(x, y, 0);
-        size_t to = ravel_index(x, y, depth());
-        std::span<T> s(&_data[from], &_data[to]);
+        std::span<T> s(&_data[from], depth());
         return s;
     }
 
     [[nodiscard]] constexpr inline std::span<const T> slice(size_t x, size_t y) const noexcept
     {
         size_t from = ravel_index(x, y, 0);
-        size_t to = ravel_index(x, y, depth());
-        std::span<const T> s(&_data[from], &_data[to]);
+        std::span<const T> s(&_data[from], depth());
         return s;
     }
 
@@ -103,20 +101,3 @@ template <typename T> class Buffer3
     size_t _depth;
     std::vector<T> _data;
 };
-
-template <std::floating_point T> using DepthBuffer = Buffer3<T>;
-
-template <std::floating_point T> constexpr inline void reset_depth_buffer(DepthBuffer<T> &buffer) noexcept
-{
-    using namespace std;
-    fill(execution::par_unseq, begin(buffer), end(buffer), numeric_limits<T>::infinity());
-}
-
-template <std::floating_point T>
-[[nodiscard]] inline DepthBuffer<T> create_depth_buffer(size_t width, size_t height, size_t depth)
-{
-    using namespace std;
-    DepthBuffer<T> buffer(width, height, depth);
-    reset_depth_buffer(buffer);
-    return buffer;
-}

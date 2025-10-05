@@ -110,7 +110,7 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    const RenderSpecification<f32> render_spec;
+    const RenderSpecification<f32> render_spec{.aa_rows = 2, .aa_cols = 2};
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 

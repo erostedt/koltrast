@@ -21,13 +21,13 @@
 template <std::floating_point T> using DepthBuffer = Buffer3<T>;
 using IndexBuffer = Buffer3<size_t>;
 
-template <std::floating_point T> inline void reset_depth_buffer(const DepthBuffer<T> &depth_buffer) noexcept
+template <std::floating_point T> inline void reset_depth_buffer(DepthBuffer<T> &depth_buffer) noexcept
 {
     using namespace std;
     fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
 }
 
-inline void reset_index_buffer(const IndexBuffer &index_buffer) noexcept
+inline void reset_index_buffer(IndexBuffer &index_buffer) noexcept
 {
     using namespace std;
     fill(execution::par_unseq, begin(index_buffer), end(index_buffer), numeric_limits<size_t>::max());
@@ -282,7 +282,7 @@ inline void render_vertices(const std::vector<Vec3<T>> &screen_coordinates,
         const T sample_contribution = T{1} / T(indicies.size());
 
         size_t coverage = 0;
-        RGB<T> color = BLACK<T>;
+        RGBA<T> color = BLACK<T>;
         for (size_t d = 0; d < indicies.size(); ++d)
         {
             size_t index = indicies[d];

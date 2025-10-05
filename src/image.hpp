@@ -100,12 +100,12 @@ template <typename T> class Image
     std::vector<T> pixels;
 };
 
-template <std::floating_point T> using ColorImage = Image<RGB<T>>;
+template <std::floating_point T> using ColorImage = Image<RGBA<T>>;
 template <std::floating_point T> inline void linear_to_srgb(ColorImage<T> &linear) noexcept
 {
     using namespace std;
     std::transform(execution::par_unseq, begin(linear), end(linear), begin(linear),
-                   [](const RGB<T> &color) -> RGB<T> { return linear_to_srgbf(color); });
+                   [](const RGBA<T> &color) -> RGBA<T> { return linear_to_srgbf(color); });
 }
 
 template <std::floating_point T> inline void dump_ppm(const ColorImage<T> &image, std::ostream &stream)

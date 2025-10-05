@@ -69,7 +69,7 @@ class LimitFps
     steady_clock::time_point start_ns;
 };
 
-inline void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cubemap, const Camera<f32> &camera,
+inline void clear_background(Image<RGBA<f32>> &image, const Image<RGBA<f32>> &cubemap, const Camera<f32> &camera,
                              const Vec3f &camera_position, const Mat4x4f &view) noexcept
 {
     // Thid is very slow
@@ -86,7 +86,7 @@ inline void clear_background(Image<RGB<f32>> &image, const Image<RGB<f32>> &cube
     });
 }
 
-inline void clear_background(Image<RGB<f32>> &image, const RGB<f32> &color) noexcept
+inline void clear_background(Image<RGBA<f32>> &image, const RGBA<f32> &color) noexcept
 {
     using namespace std;
     fill(execution::par_unseq, begin(image), end(image), color);
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
         .camera_position = camera_position,
         .texture = texture,
         .object_shininess = 16.0f,
-        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
+        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {},
         .ambient = 0.3f};
 

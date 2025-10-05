@@ -73,11 +73,11 @@ template <std::floating_point T> struct Fragment
 
 template <typename F, typename T>
 concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<T> &fragment) {
-    { f(fragment) } -> std::same_as<RGB<T>>;
+    { f(fragment) } -> std::same_as<RGBA<T>>;
 };
 
 template <std::floating_point T, typename ColorType>
-constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
+constexpr inline RGBA<T> sample_nearest_neighbor(const Vec2<T> &uv, const Image<RGBA<ColorType>> &texture) noexcept
 {
     const size_t tx = floor_to_size(uv.x() * (T)(texture.width() - 1));
     const size_t ty = floor_to_size(uv.y() * (T)(texture.height() - 1));
@@ -85,7 +85,7 @@ constexpr inline RGB<T> sample_nearest_neighbor(const Vec2<T> &uv, const Image<R
 }
 
 template <std::floating_point T, typename ColorType>
-constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<ColorType>> &texture) noexcept
+constexpr inline RGBA<T> sample_bilinear(const Vec2<T> &uv, const Image<RGBA<ColorType>> &texture) noexcept
 {
     const T x = std::clamp(uv.x() * (T)(texture.width() - 1), T{0}, (T)(texture.width() - 1));
     const T y = std::clamp(uv.y() * (T)(texture.height() - 1), T{0}, (T)(texture.height() - 1));
@@ -95,10 +95,10 @@ constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<Color
     const size_t fy = floor_to_size(y);
     const size_t cy = ceil_to_size(y);
 
-    const RGB<T> a = srgb_to_linear<T>(texture[fx, fy]);
-    const RGB<T> b = srgb_to_linear<T>(texture[cx, fy]);
-    const RGB<T> c = srgb_to_linear<T>(texture[fx, cy]);
-    const RGB<T> d = srgb_to_linear<T>(texture[cx, cy]);
+    const RGBA<T> a = srgb_to_linear<T>(texture[fx, fy]);
+    const RGBA<T> b = srgb_to_linear<T>(texture[cx, fy]);
+    const RGBA<T> c = srgb_to_linear<T>(texture[fx, cy]);
+    const RGBA<T> d = srgb_to_linear<T>(texture[cx, cy]);
 
     const T s = x - (T)fx;
     const T t = y - (T)fy;
@@ -106,10 +106,11 @@ constexpr inline RGB<T> sample_bilinear(const Vec2<T> &uv, const Image<RGB<Color
     const T red = (T{1} - s) * (T{1} - t) * a.r + s * (T{1} - t) * b.r + (T{1} - s) * t * c.r + s * t * d.r;
     const T green = (T{1} - s) * (T{1} - t) * a.g + s * (T{1} - t) * b.g + (T{1} - s) * t * c.g + s * t * d.g;
     const T blue = (T{1} - s) * (T{1} - t) * a.b + s * (T{1} - t) * b.b + (T{1} - s) * t * c.b + s * t * d.b;
-    return {red, green, blue};
+    const T alpha = (T{1} - s) * (T{1} - t) * a.a + s * (T{1} - t) * b.a + (T{1} - s) * t * c.a + s * t * d.a;
+    return {red, green, blue, alpha};
 }
 
-template <std::floating_point T> RGB<T> sample_cubemap(const Vec3<T> &direction, const Image<RGB<T>> &cubemap)
+template <std::floating_point T> RGBA<T> sample_cubemap(const Vec3<T> &direction, const Image<RGBA<T>> &cubemap)
 {
     T phi = std::atan2(direction.z(), direction.x());
     T theta = std::acos(direction.y());
@@ -130,32 +131,36 @@ template <std::floating_point T> struct DefaultFragmentShader
     std::vector<DirectionalLight<T>> directional_lights;
     T ambient = T{0};
 
-    [[nodiscard]] constexpr inline RGB<T> operator()(const Fragment<T> &fragment) const
+    [[nodiscard]] constexpr inline RGBA<T> operator()(const Fragment<T> &fragment) const
     {
-        const RGB<T> object_color = sample_bilinear(fragment.uv, texture);
+        const RGBA<T> object_color = sample_bilinear(fragment.uv, texture);
 
-        RGB<T> total = {ambient, ambient, ambient};
+        // TODO: (eric) Is this 1 ok?
+        RGBA<T> total = {ambient, ambient, ambient, T{1}};
         for (const auto &pl : point_lights)
         {
-            const RGB<T> light =
+            const RGBA<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, pl);
             total.r += light.r;
             total.g += light.g;
             total.b += light.b;
+            total.a += light.a;
         }
 
         for (const auto &dl : directional_lights)
         {
-            const RGB<T> light =
+            const RGBA<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, dl);
             total.r += light.r;
             total.g += light.g;
             total.b += light.b;
+            total.a += light.a;
         }
         const T r = std::clamp(total.r, T{0}, T{1});
         const T g = std::clamp(total.g, T{0}, T{1});
         const T b = std::clamp(total.b, T{0}, T{1});
-        const RGB<T> light = {r, g, b};
+        const T a = std::clamp(total.a, T{0}, T{1});
+        const RGBA<T> light = {r, g, b, a};
         return light * object_color;
     }
 };

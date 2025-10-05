@@ -1,2 +1,3 @@
-RGBA
+BlendFunc
+AA configuration
 Final cleanup

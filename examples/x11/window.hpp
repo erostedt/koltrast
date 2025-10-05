@@ -142,7 +142,7 @@ class DrawFrame
         XCopyArea(display, pixmap, window.window, gc, 0, 0, rect.width, rect.height, 0, 0);
     }
 
-    template <std::floating_point T> void blit(const Image<RGB<T>> &image)
+    template <std::floating_point T> void blit(const Image<RGBA<T>> &image)
     {
         using namespace std;
 
@@ -156,7 +156,8 @@ class DrawFrame
         const auto gshift = countr_zero(gmask);
         const auto bshift = countr_zero(bmask);
 
-        const auto pack_pixel = [&](const RGB<T> &color) {
+        // TODO: (eric) Use alpha here
+        const auto pack_pixel = [&](const RGBA<T> &color) {
             const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
             const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
             const auto b = std::clamp(color.b * T{255}, T{0}, T{255});

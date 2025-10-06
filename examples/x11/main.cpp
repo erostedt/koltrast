@@ -14,6 +14,7 @@
 #include "matrix.hpp"
 #include "obj.hpp"
 #include "renderer.hpp"
+#include "shader.hpp"
 #include "texture.hpp"
 #include "transform.hpp"
 #include "types.hpp"
@@ -111,7 +112,6 @@ int main(int argc, char **argv)
     const auto proj = projection_matrix(camera);
 
     ColorImage<f32> image(camera.resolution.width, camera.resolution.height);
-    const RenderSpecification<f32, DefaultBlendFunction<f32>> render_spec{.aa_rows = 2, .aa_cols = 2};
 
     XWindow window = XWindow::create(camera.resolution.width, camera.resolution.height);
 
@@ -123,6 +123,11 @@ int main(int argc, char **argv)
         .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {},
         .ambient = 0.3f};
+
+    // TODO: (eric) Fix this monstrosity
+    const RenderSpecification<f32, DefaultBlendFunction<f32>, DefaultFragmentShader<f32>,
+                              NoAA<f32, DefaultFragmentShader<f32>>>
+        render_spec{.aa_rows = 2, .aa_cols = 2};
 
     Renderer<f32> renderer;
     while (!window.should_close)

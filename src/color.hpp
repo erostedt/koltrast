@@ -3,45 +3,78 @@
 #include <array>
 #include <cmath>
 #include <concepts>
+#include <functional>
 
 #include "check.hpp"
+#include "matrix.hpp"
 #include "types.hpp"
 
-template <typename T> struct RGBA
+template <typename T, size_t Channels>
+    requires(Channels > 0)
+struct Color : public Array<T, Channels>
 {
-    T r;
-    T g;
-    T b;
-    T a;
+    using Array<T, Channels>::elements;
+    using Array<T, Channels>::Array;
+    using Array<T, Channels>::operator[];
+
+    [[nodiscard]] constexpr inline T &r() noexcept
+    {
+        return elements[0];
+    }
+
+    [[nodiscard]] constexpr inline const T &r() const noexcept
+    {
+        return elements[0];
+    }
+
+    [[nodiscard]] constexpr inline T &g() noexcept
+        requires(Channels > 1)
+    {
+        return elements[1];
+    }
+
+    [[nodiscard]] constexpr inline const T &g() const noexcept
+        requires(Channels > 1)
+    {
+        return elements[1];
+    }
+
+    [[nodiscard]] constexpr inline T &b() noexcept
+        requires(Channels > 2)
+    {
+        return elements[2];
+    }
+
+    [[nodiscard]] constexpr inline const T &b() const noexcept
+        requires(Channels > 2)
+    {
+        return elements[2];
+    }
+
+    [[nodiscard]] constexpr inline T &a() noexcept
+        requires(Channels > 3)
+    {
+        return elements[3];
+    }
+
+    [[nodiscard]] constexpr inline const T &a() const noexcept
+        requires(Channels > 3)
+    {
+        return elements[3];
+    }
 };
 
-template <std::floating_point T> constexpr inline RGBA<T> operator+(const RGBA<T> &c1, const RGBA<T> &c2) noexcept
+template <std::floating_point T, size_t Channels>
+[[nodiscard]] constexpr inline Color<T, Channels> operator*(const Color<T, Channels> &left,
+                                                            const Color<T, Channels> &right) noexcept
 {
-    return {c1.r + c2.r, c1.g + c2.g, c1.b + c2.b, c1.a + c2.a};
+    return map(left, right, std::multiplies<T>{});
 }
 
-template <std::floating_point T> constexpr inline RGBA<T> operator*(const RGBA<T> &c1, const RGBA<T> &c2) noexcept
-{
-    return {c1.r * c2.r, c1.g * c2.g, c1.b * c2.b, c1.a * c2.a};
-}
+template <typename T> using RGB = Color<T, 3>;
+template <typename T> using RGBA = Color<T, 4>;
 
-template <std::floating_point T> constexpr inline RGBA<T> operator*(const RGBA<T> &c, T s) noexcept
-{
-    return {c.r * s, c.g * s, c.b * s, c.a * s};
-}
-
-template <std::floating_point T> constexpr inline RGBA<T> operator*(T s, const RGBA<T> &c) noexcept
-{
-    return c * s;
-}
-
-template <std::floating_point T> constexpr inline RGBA<T> operator/(const RGBA<T> &c, T div) noexcept
-{
-    T s = T{1} / div;
-    return c * s;
-}
-
-template <typename T> const RGBA<T> BLACK = {T{0}, T{0}, T{0}, T{255}};
+template <typename T> const RGBA<T> BLACK = {T{0}, T{0}, T{0}, T{1}};
 
 template <std::floating_point T> constexpr inline T srgb_to_linear(const T &c) noexcept
 {
@@ -130,20 +163,20 @@ template <> [[nodiscard]] constexpr inline f64 srgb_to_linear(u8 c) noexcept
 template <std::floating_point T> [[nodiscard]] constexpr inline RGBA<T> srgb_to_linear(const RGBA<u8> &rgb) noexcept
 {
     return {
-        srgb_to_linear<T>(rgb.r),
-        srgb_to_linear<T>(rgb.g),
-        srgb_to_linear<T>(rgb.b),
-        srgb_to_linear<T>(rgb.a),
+        srgb_to_linear<T>(rgb.r()),
+        srgb_to_linear<T>(rgb.g()),
+        srgb_to_linear<T>(rgb.b()),
+        srgb_to_linear<T>(rgb.a()),
     };
 }
 
 template <std::floating_point T> [[nodiscard]] constexpr inline RGBA<T> srgb_to_linear(const RGBA<T> &rgb) noexcept
 {
     return {
-        srgb_to_linearf(rgb.r),
-        srgb_to_linearf(rgb.g),
-        srgb_to_linearf(rgb.b),
-        srgb_to_linearf(rgb.a),
+        srgb_to_linearf(rgb.r()),
+        srgb_to_linearf(rgb.g()),
+        srgb_to_linearf(rgb.b()),
+        srgb_to_linearf(rgb.a()),
     };
 }
 
@@ -182,19 +215,19 @@ constexpr inline u8 linear_to_srgb(f64 c) noexcept
 template <std::floating_point T> [[nodiscard]] constexpr inline RGBA<u8> linear_to_srgb(const RGBA<T> &linear) noexcept
 {
     return {
-        linear_to_srgb(linear.r),
-        linear_to_srgb(linear.g),
-        linear_to_srgb(linear.b),
-        linear_to_srgb(linear.a),
+        linear_to_srgb(linear.r()),
+        linear_to_srgb(linear.g()),
+        linear_to_srgb(linear.b()),
+        linear_to_srgb(linear.a()),
     };
 }
 
 template <std::floating_point T> [[nodiscard]] constexpr inline RGBA<T> linear_to_srgbf(const RGBA<T> &linear) noexcept
 {
     return {
-        linear_to_srgbf(linear.r),
-        linear_to_srgbf(linear.g),
-        linear_to_srgbf(linear.b),
-        linear_to_srgbf(linear.a),
+        linear_to_srgbf(linear.r()),
+        linear_to_srgbf(linear.g()),
+        linear_to_srgbf(linear.b()),
+        linear_to_srgbf(linear.a()),
     };
 }

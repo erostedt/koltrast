@@ -103,11 +103,7 @@ constexpr inline RGBA<T> sample_bilinear(const Vec2<T> &uv, const Image<RGBA<Col
     const T s = x - (T)fx;
     const T t = y - (T)fy;
 
-    const T red = (T{1} - s) * (T{1} - t) * a.r + s * (T{1} - t) * b.r + (T{1} - s) * t * c.r + s * t * d.r;
-    const T green = (T{1} - s) * (T{1} - t) * a.g + s * (T{1} - t) * b.g + (T{1} - s) * t * c.g + s * t * d.g;
-    const T blue = (T{1} - s) * (T{1} - t) * a.b + s * (T{1} - t) * b.b + (T{1} - s) * t * c.b + s * t * d.b;
-    const T alpha = (T{1} - s) * (T{1} - t) * a.a + s * (T{1} - t) * b.a + (T{1} - s) * t * c.a + s * t * d.a;
-    return {red, green, blue, alpha};
+    return (T{1} - s) * (T{1} - t) * a + s * (T{1} - t) * b + (T{1} - s) * t * c + s * t * d;
 }
 
 template <std::floating_point T> RGBA<T> sample_cubemap(const Vec3<T> &direction, const Image<RGBA<T>> &cubemap)
@@ -141,25 +137,23 @@ template <std::floating_point T> struct DefaultFragmentShader
         {
             const RGBA<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, pl);
-            total.r += light.r;
-            total.g += light.g;
-            total.b += light.b;
-            total.a += light.a;
+            total.r() += light.r();
+            total.g() += light.g();
+            total.b() += light.b();
         }
 
         for (const auto &dl : directional_lights)
         {
             const RGBA<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, dl);
-            total.r += light.r;
-            total.g += light.g;
-            total.b += light.b;
-            total.a += light.a;
+            total.r() += light.r();
+            total.g() += light.g();
+            total.b() += light.b();
         }
-        const T r = std::clamp(total.r, T{0}, T{1});
-        const T g = std::clamp(total.g, T{0}, T{1});
-        const T b = std::clamp(total.b, T{0}, T{1});
-        const T a = std::clamp(total.a, T{0}, T{1});
+        const T r = std::clamp(total.r(), T{0}, T{1});
+        const T g = std::clamp(total.g(), T{0}, T{1});
+        const T b = std::clamp(total.b(), T{0}, T{1});
+        const T a = std::clamp(total.a(), T{0}, T{1});
         const RGBA<T> light = {r, g, b, a};
         return light * object_color;
     }

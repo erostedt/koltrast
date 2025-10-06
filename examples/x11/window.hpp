@@ -162,10 +162,10 @@ class DrawFrame
         const auto ashift = countr_zero(amask);
 
         const auto pack_pixel = [&](const RGBA<T> &color) {
-            const auto r = std::clamp(color.r * T{255}, T{0}, T{255});
-            const auto g = std::clamp(color.g * T{255}, T{0}, T{255});
-            const auto b = std::clamp(color.b * T{255}, T{0}, T{255});
-            const auto a = std::clamp(color.a * T{255}, T{0}, T{255});
+            const auto r = std::clamp(color.r() * T{255}, T{0}, T{255});
+            const auto g = std::clamp(color.g() * T{255}, T{0}, T{255});
+            const auto b = std::clamp(color.b() * T{255}, T{0}, T{255});
+            const auto a = std::clamp(color.a() * T{255}, T{0}, T{255});
             return ((u32)r << rshift & rmask) | ((u32)g << gshift & gmask) | ((u32)b << bshift & bmask) |
                    ((u32)a << ashift & amask);
         };

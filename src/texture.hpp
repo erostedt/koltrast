@@ -24,10 +24,10 @@ void free_image(void *image);
     for (size_t i = 0; i < size; ++i)
     {
         auto &e = texture[i];
-        e.r = data[4 * i + 0];
-        e.g = data[4 * i + 1];
-        e.b = data[4 * i + 2];
-        e.a = data[4 * i + 3];
+        e.r() = data[4 * i + 0];
+        e.g() = data[4 * i + 1];
+        e.b() = data[4 * i + 2];
+        e.a() = data[4 * i + 3];
     }
 
     free_image(data);
@@ -44,10 +44,10 @@ template <std::floating_point T> Image<RGBA<T>> load_cubemap(const fs::path &pat
 
     for (size_t i = 0; i < (size_t)width * (size_t)height; ++i)
     {
-        cubemap[i].r = T(data[4 * i + 0]);
-        cubemap[i].g = T(data[4 * i + 1]);
-        cubemap[i].b = T(data[4 * i + 2]);
-        cubemap[i].a = T(data[4 * i + 3]);
+        cubemap[i].r() = T(data[4 * i + 0]);
+        cubemap[i].g() = T(data[4 * i + 1]);
+        cubemap[i].b() = T(data[4 * i + 2]);
+        cubemap[i].a() = T(data[4 * i + 3]);
     }
     free_image(data);
     return cubemap;

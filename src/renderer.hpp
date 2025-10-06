@@ -11,6 +11,7 @@
 
 #include "buffer3.hpp"
 #include "check.hpp"
+#include "color.hpp"
 #include "counting_iterator.hpp"
 #include "image.hpp"
 #include "math.hpp"
@@ -261,11 +262,11 @@ inline void rasterize_triangles(const std::vector<Vec3<T>> &screen_coordinates, 
     });
 }
 
-template <std::floating_point T, FragmentShader<T> FragmentShader>
+template <std::floating_point T, FragmentShader<T> FragmentShader, BlendFunction<T> BlendFunction>
 inline void render_vertices(const std::vector<Vec3<T>> &screen_coordinates,
                             const std::vector<OutputVertex<T>> &vertex_buffer, const FragmentShader &fragment_shader,
                             const std::vector<Vec2<T>> &sample_offsets, const IndexBuffer &index_buffer,
-                            ColorImage<T> &linear_image) noexcept
+                            const BlendFunction &blend_function, ColorImage<T> &linear_image) noexcept
 {
     CHECK(index_buffer.depth() == sample_offsets.size());
 
@@ -281,7 +282,6 @@ inline void render_vertices(const std::vector<Vec3<T>> &screen_coordinates,
 
         const T sample_contribution = T{1} / T(indicies.size());
 
-        size_t coverage = 0;
         RGBA<T> color = BLACK<T>;
         for (size_t d = 0; d < indicies.size(); ++d)
         {
@@ -308,11 +308,11 @@ inline void render_vertices(const std::vector<Vec3<T>> &screen_coordinates,
                                               v1.texture_coordinates, v2.texture_coordinates, v3.texture_coordinates);
 
                 color = color + sample_contribution * fragment_shader({world_position, world_normal, uv});
-                ++coverage;
             }
         }
-        T coverage_fraction = (T)coverage * sample_contribution;
-        linear_image[x, y] = color + (T{1} - coverage_fraction) * linear_image[x, y];
+        const RGBA<T> background = linear_image[x, y];
+        const RGBA<T> foreground = color;
+        linear_image[x, y] = blend_function(foreground, background);
     });
 }
 
@@ -344,7 +344,7 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
     return {sx, sy, ndc.z()};
 }
 
-template <std::floating_point T> struct RenderSpecification
+template <std::floating_point T, BlendFunction<T> BlendFunction> struct RenderSpecification
 {
     size_t tile_rows = 8;
     size_t tile_cols = 8;
@@ -354,14 +354,15 @@ template <std::floating_point T> struct RenderSpecification
     size_t aa_rows = 1;
     size_t aa_cols = 1;
 
-    // BlendFunction bf;
+    BlendFunction blend_function{};
 };
 
-template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
+template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader,
+          BlendFunction<T> BlendFunction>
 constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                              const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                              const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
-                             const RenderSpecification<T> &render_spec, IndexBuffer &index_buffer,
+                             const RenderSpecification<T, BlendFunction> &render_spec, IndexBuffer &index_buffer,
                              std::vector<OutputVertex<T>> &vertex_buffer, std::vector<Vec3<T>> &screen_coordinates,
                              DepthBuffer<T> &depth_buffer, ColorImage<T> &linear_image) noexcept
 {
@@ -390,8 +391,8 @@ constexpr inline void render(const std::vector<Face> &faces, const std::vector<V
 
     rasterize_triangles<T>(screen_coordinates, render_spec.tile_rows, render_spec.tile_cols, sample_offsets,
                            depth_buffer, index_buffer);
-
-    render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer, linear_image);
+    render_vertices(screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer,
+                    render_spec.blend_function, linear_image);
 }
 
 template <std::floating_point T> class RenderFrame
@@ -406,11 +407,12 @@ template <std::floating_point T> class RenderFrame
         fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
     }
 
-    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader>
+    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader, BlendFunction<T> BlendFunction>
     constexpr inline void render(const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                                  const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                                  const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
-                                 const RenderSpecification<T> &render_spec, ColorImage<T> &linear_image) noexcept
+                                 const RenderSpecification<T, BlendFunction> &render_spec,
+                                 ColorImage<T> &linear_image) noexcept
     {
         using namespace std;
         const size_t aa_samples = render_spec.aa_rows * render_spec.aa_cols;

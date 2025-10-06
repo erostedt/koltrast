@@ -97,6 +97,22 @@ template <typename T> using RGBA = Color<T, 4>;
 
 template <typename T> const RGBA<T> BLACK = {T{0}, T{0}, T{0}, T{1}};
 
+template <typename F, typename T>
+concept BlendFunction =
+    std::floating_point<T> && requires(const F f, const RGBA<T> &foreground, const RGBA<T> &background) {
+        { f(foreground, background) } -> std::same_as<RGBA<T>>;
+    };
+
+template <std::floating_point T> struct DefaultBlendFunction
+{
+    [[nodiscard]] constexpr inline RGBA<T> operator()(const RGBA<T> &foreground,
+                                                      const RGBA<T> &background) const noexcept
+    {
+        T alpha = foreground.a();
+        return foreground * alpha + background * (1 - alpha);
+    }
+};
+
 template <std::floating_point T> constexpr inline T srgb_to_linear(const T &c) noexcept
 {
     if (c <= T(0.04045))

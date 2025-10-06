@@ -1,4 +1,3 @@
-BlendFunc
 AA configuration
 Actually use Alpha in X11
 Final cleanup

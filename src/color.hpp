@@ -62,6 +62,17 @@ struct Color : public Array<T, Channels>
     {
         return elements[3];
     }
+
+    [[nodiscard]] constexpr inline Color<T, 4> with_alpha(T alpha) const noexcept
+        requires(Channels == 3)
+    {
+        return {
+            r(),
+            g(),
+            b(),
+            alpha,
+        };
+    }
 };
 
 template <std::floating_point T, size_t Channels>
@@ -70,6 +81,16 @@ template <std::floating_point T, size_t Channels>
 {
     return map(left, right, std::multiplies<T>{});
 }
+
+namespace std
+{
+
+template <std::floating_point T, size_t N> Color<T, N> clamp(const Color<T, N> &color, T min, T max)
+{
+    return map(color, [min, max](T channel) { return clamp(channel, min, max); });
+}
+
+}; // namespace std
 
 template <typename T> using RGB = Color<T, 3>;
 template <typename T> using RGBA = Color<T, 4>;

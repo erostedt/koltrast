@@ -119,7 +119,7 @@ int main(int argc, char **argv)
         .camera_position = camera_position,
         .texture = texture,
         .object_shininess = 16.0f,
-        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
+        .point_lights = {{.position = {0.0f, 1.0f, 2.0f}, .color = {1.0f, 1.0f, 1.0f}, .specular = 0.8f}},
         .directional_lights = {},
         .ambient = 0.3f};
 

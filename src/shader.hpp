@@ -131,30 +131,22 @@ template <std::floating_point T> struct DefaultFragmentShader
     {
         const RGBA<T> object_color = sample_bilinear(fragment.uv, texture);
 
-        // TODO: (eric) Is this 1 ok?
-        RGBA<T> total = {ambient, ambient, ambient, T{1}};
+        RGB<T> total = {ambient, ambient, ambient};
         for (const auto &pl : point_lights)
         {
-            const RGBA<T> light =
+            const RGB<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, pl);
-            total.r() += light.r();
-            total.g() += light.g();
-            total.b() += light.b();
+            total += light;
         }
 
         for (const auto &dl : directional_lights)
         {
-            const RGBA<T> light =
+            const RGB<T> light =
                 sample_light(fragment.position, fragment.normal, camera_position, object_shininess, dl);
-            total.r() += light.r();
-            total.g() += light.g();
-            total.b() += light.b();
+            total += light;
         }
-        const T r = std::clamp(total.r(), T{0}, T{1});
-        const T g = std::clamp(total.g(), T{0}, T{1});
-        const T b = std::clamp(total.b(), T{0}, T{1});
-        const T a = std::clamp(total.a(), T{0}, T{1});
-        const RGBA<T> light = {r, g, b, a};
+        total = std::clamp(total, T{0}, T{1});
+        const RGBA<T> light = total.with_alpha(T{1});
         return light * object_color;
     }
 };

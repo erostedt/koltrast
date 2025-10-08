@@ -125,9 +125,8 @@ int main(int argc, char **argv)
         .ambient = 0.3f};
 
     // TODO: (eric) Fix this monstrosity
-    const RenderSpecification<f32, DefaultBlendFunction<f32>, DefaultFragmentShader<f32>,
-                              NoAA<f32, DefaultFragmentShader<f32>>>
-        render_spec{.aa_rows = 2, .aa_cols = 2};
+    const DefaultBlendFunction<f32> blend_function{};
+    const NoAA<f32, DefaultFragmentShader<f32>> aa_function{};
 
     Renderer<f32> renderer;
     while (!window.should_close)
@@ -152,7 +151,7 @@ int main(int argc, char **argv)
 
         RenderFrame<f32> render_frame = renderer.new_frame();
         render_frame.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                            fragment_shader, render_spec, image);
+                            fragment_shader, blend_function, aa_function, image);
         linear_to_srgb(image);
         frame.blit(image);
     }

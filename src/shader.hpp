@@ -79,30 +79,38 @@ concept FragmentShader = std::floating_point<T> && requires(F f, const Fragment<
     { f(fragment) } -> std::same_as<RGBA<T>>;
 };
 
+template <std::floating_point T, FragmentShader<T> FragmentShader> struct AAFunctor
+{
+    virtual size_t size() const = 0;
+    virtual RGBA<T> operator()(const FragmentShader &fragment_shader, const std::vector<Fragment<T>> &fragments,
+                               size_t sample_count) const = 0;
+};
+
 template <typename F, typename T, typename Shader>
 concept AAFunction = std::floating_point<T> && FragmentShader<Shader, T> &&
-                     requires(const F &f, const Shader &fragment_shader, const std::vector<Fragment<T>> &fragments,
-                              size_t sample_count) {
-                         { f(fragment_shader, fragments, sample_count) } -> std::same_as<RGBA<T>>;
+                     requires(const F &f, const Shader &fragment_shader, const std::vector<Fragment<T>> &fragments) {
+                         { f(fragment_shader, fragments) } -> std::same_as<RGBA<T>>;
+                         { f.rows } -> std::convertible_to<size_t>;
+                         { f.cols } -> std::convertible_to<size_t>;
                      };
 
 template <std::floating_point T, FragmentShader<T> FragmentShader> struct NoAA
 {
     [[nodiscard]] constexpr inline RGBA<T> operator()(const FragmentShader &fragment_shader,
-                                                      const std::vector<Fragment<T>> &fragments,
-                                                      size_t /*sample_count*/) const noexcept
+                                                      const std::vector<Fragment<T>> &fragments) const noexcept
     {
         return fragment_shader(fragments.front());
     }
+    const size_t rows = 1;
+    const size_t cols = 1;
 };
 
 template <std::floating_point T, FragmentShader<T> FragmentShader> struct SSAA
 {
     [[nodiscard]] constexpr inline RGBA<T> operator()(const FragmentShader &fragment_shader,
-                                                      const std::vector<Fragment<T>> &fragments,
-                                                      size_t sample_count) const noexcept
+                                                      const std::vector<Fragment<T>> &fragments) const noexcept
     {
-        const T sample_contribution = T{1} / T(sample_count);
+        const T sample_contribution = T{1} / T(rows * cols);
         using namespace std;
         return transform_reduce(begin(fragments), end(fragments), BLACK<T>, std::plus<RGBA<T>>{},
                                 [&](const Fragment<T> &fragment) {
@@ -110,18 +118,20 @@ template <std::floating_point T, FragmentShader<T> FragmentShader> struct SSAA
                                     return sample_contribution * color;
                                 });
     }
+
+    size_t rows = 1;
+    size_t cols = 1;
 };
 
 template <std::floating_point T, FragmentShader<T> FragmentShader> struct MSAA
 {
     [[nodiscard]] constexpr inline RGBA<T> operator()(const FragmentShader &fragment_shader,
-                                                      const std::vector<Fragment<T>> &fragments,
-                                                      size_t sample_count) const noexcept
+                                                      const std::vector<Fragment<T>> &fragments) const noexcept
     {
         using namespace std;
         CHECK(size(fragments) > 0);
         const T sample_contibution = T{1} / T(size(fragments));
-        const T coverage = T(size(fragments)) / T(sample_count);
+        const T coverage = T(size(fragments)) / T(rows * cols);
         Vec3<T> position{};
         Vec3<T> normal{};
         Vec2<T> uv{};
@@ -136,6 +146,9 @@ template <std::floating_point T, FragmentShader<T> FragmentShader> struct MSAA
         uv *= sample_contibution;
         return coverage * fragment_shader({position, normal, uv});
     }
+
+    size_t rows = 1;
+    size_t cols = 1;
 };
 
 template <std::floating_point T, typename ColorType>

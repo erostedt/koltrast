@@ -362,7 +362,6 @@ constexpr inline void render(ColorImage<T> &linear_image, DepthBuffer<T> &depth_
     CHECK(depth_buffer.height() == linear_image.height());
 
     const std::vector<Vec2<T>> sample_offsets = make_aa_grid<T>(aa_function.rows, aa_function.cols);
-    fill(execution::par_unseq, begin(index_buffer), end(index_buffer), numeric_limits<size_t>::max());
     for_each(execution::par_unseq, counting_iterator(0), counting_iterator(size(faces)), [&](size_t face_index) {
         const Face &face = faces[face_index];
         for (size_t vertex_index = 0; vertex_index < Face::size; ++vertex_index)
@@ -385,6 +384,14 @@ constexpr inline void render(ColorImage<T> &linear_image, DepthBuffer<T> &depth_
                     blend_function, aa_function);
 }
 
+template <std::floating_point T> struct RenderBuffers
+{
+    DepthBuffer<T> depth_buffer{};
+    IndexBuffer index_buffer{};
+    std::vector<OutputVertex<T>> vertex_buffer{};
+    std::vector<Vec3<T>> screen_coordinates{};
+};
+
 template <std::floating_point T> class RenderFrame
 {
   public:
@@ -394,7 +401,13 @@ template <std::floating_point T> class RenderFrame
           _screen_coordinates(screen_coordinates)
     {
         using namespace std;
-        fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
+        reset_depth_buffer(depth_buffer);
+    }
+
+    RenderFrame(RenderBuffers<T> &render_buffers)
+        : RenderFrame<T>(render_buffers.depth_buffer, render_buffers.index_buffer, render_buffers.vertex_buffer,
+                         render_buffers.screen_coordinates)
+    {
     }
 
     template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader,
@@ -414,8 +427,9 @@ template <std::floating_point T> class RenderFrame
         {
             _index_buffer = IndexBuffer(linear_image.width(), linear_image.height(), aa_samples);
             _depth_buffer = DepthBuffer<T>(linear_image.width(), linear_image.height(), aa_samples);
-            fill(execution::par_unseq, begin(_depth_buffer), end(_depth_buffer), numeric_limits<T>::infinity());
+            reset_depth_buffer(_depth_buffer);
         }
+        reset_index_buffer(_index_buffer);
 
         const size_t vertex_count = Face::size * size(faces);
         _vertex_buffer.resize(vertex_count);
@@ -431,19 +445,4 @@ template <std::floating_point T> class RenderFrame
     IndexBuffer &_index_buffer;
     std::vector<OutputVertex<T>> &_vertex_buffer;
     std::vector<Vec3<T>> &_screen_coordinates;
-};
-
-template <std::floating_point T> class Renderer
-{
-  public:
-    RenderFrame<T> new_frame()
-    {
-        return RenderFrame<T>(depth_buffer, index_buffer, vertex_buffer, screen_coordinates);
-    }
-
-  private:
-    DepthBuffer<T> depth_buffer{};
-    IndexBuffer index_buffer{};
-    std::vector<OutputVertex<T>> vertex_buffer{};
-    std::vector<Vec3<T>> screen_coordinates{};
 };

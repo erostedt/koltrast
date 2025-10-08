@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         .directional_lights = {},
         .ambient = 0.3f};
 
-    Renderer<f32> renderer;
+    RenderBuffers<f32> buffers;
     while (!window.should_close)
     {
         PrintFps print_fps;
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         clear_background(image, BLACK<f32>);
         DrawFrame frame(window);
 
-        RenderFrame<f32> render_frame = renderer.new_frame();
+        RenderFrame<f32> render_frame(buffers);
         render_frame.render(image, mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
                             fragment_shader);
         linear_to_srgb(image);

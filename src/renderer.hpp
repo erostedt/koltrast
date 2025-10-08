@@ -347,16 +347,16 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
 }
 
 template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader,
-          BlendFunction<T> BlendFunction, AAFunction<T, FragmentShader> AAFunction>
+          BlendFunction<T> BlendFunction = DefaultBlendFunction<T>,
+          AAFunction<T, FragmentShader> AAFunction = NoAA<T, FragmentShader>>
 constexpr inline void render(ColorImage<T> &linear_image, DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer,
                              std::vector<OutputVertex<T>> &vertex_buffer, std::vector<Vec3<T>> &screen_coordinates,
                              const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
                              const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
                              const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
-                             const BlendFunction &blend_function, const AAFunction &aa_function) noexcept
+                             const BlendFunction &blend_function = {}, const AAFunction &aa_function = {},
+                             size_t tile_rows = 8, size_t tile_cols = 8) noexcept
 {
-    size_t tile_rows = 8;
-    size_t tile_cols = 8;
     using namespace std;
     CHECK(depth_buffer.width() == linear_image.width());
     CHECK(depth_buffer.height() == linear_image.height());
@@ -397,13 +397,15 @@ template <std::floating_point T> class RenderFrame
         fill(execution::par_unseq, begin(depth_buffer), end(depth_buffer), numeric_limits<T>::infinity());
     }
 
-    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader, BlendFunction<T> BlendFunction,
-              AAFunction<T, FragmentShader> AAFunction>
+    template <VertexShader<T> VertexShader, FragmentShader<T> FragmentShader,
+              BlendFunction<T> BlendFunction = DefaultBlendFunction<T>,
+              AAFunction<T, FragmentShader> AAFunction = NoAA<T, FragmentShader>>
     constexpr inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
                                  const std::vector<Vec3<T>> &positions, const std::vector<Vec3<T>> &normals,
                                  const std::vector<Vec2<T>> &texture_coordinates, const VertexShader &vertex_shader,
-                                 const FragmentShader &fragment_shader, const BlendFunction &blend_function,
-                                 const AAFunction &aa_function) noexcept
+                                 const FragmentShader &fragment_shader, const BlendFunction &blend_function = {},
+                                 const AAFunction &aa_function = {}, size_t tile_rows = 8,
+                                 size_t tile_cols = 8) noexcept
     {
         using namespace std;
         const size_t aa_samples = aa_function.rows * aa_function.cols;
@@ -420,7 +422,8 @@ template <std::floating_point T> class RenderFrame
         _screen_coordinates.resize(vertex_count);
 
         ::render(linear_image, _depth_buffer, _index_buffer, _vertex_buffer, _screen_coordinates, faces, positions,
-                 normals, texture_coordinates, vertex_shader, fragment_shader, blend_function, aa_function);
+                 normals, texture_coordinates, vertex_shader, fragment_shader, blend_function, aa_function, tile_rows,
+                 tile_cols);
     }
 
   private:

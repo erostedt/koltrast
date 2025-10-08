@@ -124,10 +124,6 @@ int main(int argc, char **argv)
         .directional_lights = {},
         .ambient = 0.3f};
 
-    // TODO: (eric) Fix this monstrosity
-    const DefaultBlendFunction<f32> blend_function{};
-    const NoAA<f32, DefaultFragmentShader<f32>> aa_function{};
-
     Renderer<f32> renderer;
     while (!window.should_close)
     {
@@ -151,7 +147,7 @@ int main(int argc, char **argv)
 
         RenderFrame<f32> render_frame = renderer.new_frame();
         render_frame.render(image, mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                            fragment_shader, blend_function, aa_function);
+                            fragment_shader);
         linear_to_srgb(image);
         frame.blit(image);
     }

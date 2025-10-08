@@ -173,9 +173,10 @@ constexpr inline void rasterize_pixel(size_t triangle_index, const Vec3<T> &weig
 }
 
 template <std::floating_point T>
-constexpr inline void rasterize_triangle(size_t triangle_index, const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3,
-                                         const BoundingBox<T> &bounds, const std::vector<Vec2<T>> &sample_offsets,
-                                         DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
+constexpr inline void rasterize_triangle(DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer, size_t triangle_index,
+                                         const Vec3<T> &p1, const Vec3<T> &p2, const Vec3<T> &p3,
+                                         const BoundingBox<T> &bounds,
+                                         const std::vector<Vec2<T>> &sample_offsets) noexcept
 {
     // Backface
     T tol = T(1e-6);
@@ -238,9 +239,9 @@ constexpr inline void rasterize_triangle(size_t triangle_index, const Vec3<T> &p
 }
 
 template <std::floating_point T>
-inline void rasterize_triangles(const std::vector<Vec3<T>> &screen_coordinates, const size_t tile_rows,
-                                const size_t tile_cols, const std::vector<Vec2<T>> &sample_offsets,
-                                DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer) noexcept
+inline void rasterize_triangles(DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer,
+                                const std::vector<Vec3<T>> &screen_coordinates, const size_t tile_rows,
+                                const size_t tile_cols, const std::vector<Vec2<T>> &sample_offsets) noexcept
 {
     CHECK(screen_coordinates.size() % 3 == 0);
     CHECK(tile_rows > 0);
@@ -257,7 +258,7 @@ inline void rasterize_triangles(const std::vector<Vec3<T>> &screen_coordinates, 
             const Vec3<T> &a = screen_coordinates[3 * i + 0];
             const Vec3<T> &b = screen_coordinates[3 * i + 1];
             const Vec3<T> &c = screen_coordinates[3 * i + 2];
-            rasterize_triangle(i, a, b, c, bounds, sample_offsets, depth_buffer, index_buffer);
+            rasterize_triangle(depth_buffer, index_buffer, i, a, b, c, bounds, sample_offsets);
         }
     });
 }
@@ -347,13 +348,12 @@ constexpr inline Vec3<T> clip_to_screen_space(const Vec4<T> &clip_position, cons
 
 template <std::floating_point T, VertexShader<T> VertexShader, FragmentShader<T> FragmentShader,
           BlendFunction<T> BlendFunction, AAFunction<T, FragmentShader> AAFunction>
-constexpr inline void render(ColorImage<T> &linear_image, const std::vector<Face> &faces,
-                             const std::vector<Vec3<T>> &positions, const std::vector<Vec3<T>> &normals,
-                             const std::vector<Vec2<T>> &texture_coordinates, const VertexShader &vertex_shader,
-                             const FragmentShader &fragment_shader, const BlendFunction &blend_function,
-                             const AAFunction &aa_function, IndexBuffer &index_buffer,
+constexpr inline void render(ColorImage<T> &linear_image, DepthBuffer<T> &depth_buffer, IndexBuffer &index_buffer,
                              std::vector<OutputVertex<T>> &vertex_buffer, std::vector<Vec3<T>> &screen_coordinates,
-                             DepthBuffer<T> &depth_buffer) noexcept
+                             const std::vector<Face> &faces, const std::vector<Vec3<T>> &positions,
+                             const std::vector<Vec3<T>> &normals, const std::vector<Vec2<T>> &texture_coordinates,
+                             const VertexShader &vertex_shader, const FragmentShader &fragment_shader,
+                             const BlendFunction &blend_function, const AAFunction &aa_function) noexcept
 {
     size_t tile_rows = 8;
     size_t tile_cols = 8;
@@ -380,7 +380,7 @@ constexpr inline void render(ColorImage<T> &linear_image, const std::vector<Face
         }
     });
 
-    rasterize_triangles<T>(screen_coordinates, tile_rows, tile_cols, sample_offsets, depth_buffer, index_buffer);
+    rasterize_triangles<T>(depth_buffer, index_buffer, screen_coordinates, tile_rows, tile_cols, sample_offsets);
     render_vertices(linear_image, screen_coordinates, vertex_buffer, fragment_shader, sample_offsets, index_buffer,
                     blend_function, aa_function);
 }
@@ -419,8 +419,8 @@ template <std::floating_point T> class RenderFrame
         _vertex_buffer.resize(vertex_count);
         _screen_coordinates.resize(vertex_count);
 
-        ::render(linear_image, faces, positions, normals, texture_coordinates, vertex_shader, fragment_shader,
-                 blend_function, aa_function, _index_buffer, _vertex_buffer, _screen_coordinates, _depth_buffer);
+        ::render(linear_image, _depth_buffer, _index_buffer, _vertex_buffer, _screen_coordinates, faces, positions,
+                 normals, texture_coordinates, vertex_shader, fragment_shader, blend_function, aa_function);
     }
 
   private:

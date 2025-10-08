@@ -150,8 +150,8 @@ int main(int argc, char **argv)
         DrawFrame frame(window);
 
         RenderFrame<f32> render_frame = renderer.new_frame();
-        render_frame.render(mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
-                            fragment_shader, blend_function, aa_function, image);
+        render_frame.render(image, mesh.faces, mesh.vertices, mesh.normals, mesh.texture_coordinates, vertex_shader,
+                            fragment_shader, blend_function, aa_function);
         linear_to_srgb(image);
         frame.blit(image);
     }
